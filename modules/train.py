@@ -100,7 +100,7 @@ class Train:
         vi_grad = self.gradient(vi)
         ir_grad = self.gradient(ir)
         grad_max = torch.max(vi_grad, ir_grad)
-        l_f = b1 * self.ssim(fus, torch.max(ir, vi)) + b2 * self.l1(fus, torch.max(ir, vi)) + b2 * self.l1(self.gradient(fus), grad_max)
+        l_f = b1 * self.ssim(fus, torch.max(ir, vi)) + b2 * self.l1(fus, torch.max(ir, vi)) + b1 * self.ssim(self.gradient(fus), grad_max) +  b2 * self.l1(self.gradient(fus), grad_max)
         l_f = l_f.mean()
         loss = l_f
         # backward
@@ -135,7 +135,7 @@ class Train:
         vi_grad = self.gradient(vi)
         ir_grad = self.gradient(ir)
         grad_max = torch.max(vi_grad, ir_grad)
-        l_f = b1 * self.ssim(fus, torch.max(ir, vi)) + b2 * self.l1(fus, torch.max(ir, vi)) + b2 * self.l1(self.gradient(fus), grad_max)
+        l_f = b1 * self.ssim(fus, torch.max(ir, vi)) + b2 * self.l1(fus, torch.max(ir, vi)) + b1 * self.ssim(self.gradient(fus), grad_max) +  b2 * self.l1(self.gradient(fus), grad_max)
         l_f = l_f.mean()
         loss = l_f
         # loss state

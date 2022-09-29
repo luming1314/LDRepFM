@@ -17,7 +17,7 @@ def parse_args() -> Namespace:
     # universal opt
     parser.add_argument('--id', default='a1', help='train process identifier')
     parser.add_argument('--folder', default='data/train', help='data root path')
-    parser.add_argument('--size', default=224, help='resize image to the specified size')
+    parser.add_argument('--size', default=120, help='resize image to the specified size')
     parser.add_argument('--cache', default='cache', help='weights cache folder')
 
     # LseRepFusNet opt
@@ -32,7 +32,7 @@ def parse_args() -> Namespace:
     # optimizer opt
     parser.add_argument('--learning_rate', type=float, default=1e-4, help='learning rate')
     # dataloader opt
-    parser.add_argument('--batch_size', type=int, default=70, help='dataloader batch size')
+    parser.add_argument('--batch_size', type=int, default=80, help='dataloader batch size')
     parser.add_argument('--num_workers', type=int, default=8, help='dataloader workers number')
 
     # experimental opt

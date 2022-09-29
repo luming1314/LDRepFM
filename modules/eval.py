@@ -30,7 +30,7 @@ class Eval:
             ir, vi = pair.ir_t, pair.vi_t
             ir, vi = [ir.half(), vi.half()] if self.half else [ir, vi]
             ir, vi = ir.to(self.device), vi.to(self.device)
-            fus = self.net(ir.unsqueeze(0), vi.unsqueeze(0)).clip(0., 1.)
+            fus = self.net(ir.unsqueeze(0), vi.unsqueeze(0))[0].clip(0., 1.)
             c, w, h = ir.size()
             tf = transforms.Resize((w, h))
             fus = tf(fus)

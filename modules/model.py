@@ -163,8 +163,8 @@ class LseRepFusNet(nn.Module):
 
         self.encoder0 = RepVGGBlock(in_channels=1, out_channels=self.in_planes, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se)
         self.cur_layer_idx = 1
-        self.encoder1 = self._make_stage(int(64 * width_multiplier[0]), num_blocks[0], stride=2)
-        self.encoder2 = self._make_stage(int(128 * width_multiplier[1]), num_blocks[1], stride=2)
+        self.encoder1 = self._make_stage(int(64 * width_multiplier[0]), num_blocks[0], stride=1)
+        self.encoder2 = self._make_stage(int(128 * width_multiplier[1]), num_blocks[1], stride=1)
 
         self.decoder0 = ConvBnLeakyRelu2d(192, 96)
         self.decoder1 = ConvBnLeakyRelu2d(96, 48)
@@ -174,7 +174,7 @@ class LseRepFusNet(nn.Module):
             nn.Conv2d(96, 384, kernel_size=3, stride=1, padding=1),
             nn.PixelShuffle(2),
             nn.PReLU(),
-
+            #
             nn.Conv2d(96, 384, kernel_size=3, stride=1, padding=1),
             nn.PixelShuffle(2),
             nn.PReLU(),
@@ -205,27 +205,37 @@ class LseRepFusNet(nn.Module):
 
     def forward(self, ir, vi):
 
-        ir_hide, _, _, _ = self.layer_separate(ir, vi)
-
-        vi_up = 0.5 * ir_hide + 0.5 * vi
+        # ir_hide, _, _, _ = self.layer_separate(ir, vi)
+        #
+        # out = self.encoder0(ir_hide)
+        # out = self.encoder1(out)
+        # ir_hide_f = self.encoder2(out)
 
         out = self.encoder0(ir)
         out = self.encoder1(out)
         ir_f = self.encoder2(out)
-        ir_f = self.scaleUp(ir_f)
+        # ir_f = self.scaleUp(ir_f)
 
-        out = self.encoder0(vi_up)
+        out = self.encoder0(vi)
         out = self.encoder1(out)
         vi_f = self.encoder2(out)
-        vi_f = self.scaleUp(vi_f)
+        # vi_f = self.scaleUp(vi_f)
 
-        out = torch.cat([vi_f, ir_f], dim=1)
+        out = torch.cat([vi_f , ir_f], dim=1)
 
         out = self.decoder0(out)
         out = self.decoder1(out)
-        out = self.decoder2(out)
+        fus = self.decoder2(out)
 
-        return out
+        # out = self.decoder0(vi_f)
+        # out = self.decoder1(vi_f)
+        # vi_final = self.decoder2(out)
+
+        # out = self.decoder0(ir_f)
+        # out = self.decoder1(ir_f)
+        # ir_final = self.decoder2(out)
+
+        return fus
 
 
 
