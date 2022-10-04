@@ -16,7 +16,9 @@ from tensorboardX import SummaryWriter
 
 from modules.dataset import DataSets
 from modules.environment_probe import EnvironmentProbe
-from modules.model import LseRepFusNet
+from modules.model import LseRepFusNet, LseRepNet
+
+
 class Train:
 
     def __init__(self, environment_probe: EnvironmentProbe, config: Namespace, logging: logging, writer: SummaryWriter):
@@ -30,12 +32,14 @@ class Train:
         logging.info(f'autoEncoder | dim: {config.dim} | depth: {config.depth}')
 
         self.lseRepFusNet = LseRepFusNet(num_blocks=[2, 4, 14, 1], width_multiplier=[0.75, 0.75, 0.75, 2.5], override_groups_map=None, deploy=False)
+        self.lseRepNet = LseRepNet(num_blocks=[2, 4, 14, 1], width_multiplier=[0.75, 0.75, 0.75, 2.5], override_groups_map=None, deploy=False)
 
 
         # WGAN adam optim
         logging.info(f'RMSprop | learning rate: {config.learning_rate}')
 
         self.opt_lseRepFusNet = RMSprop(self.lseRepFusNet.parameters(), lr=config.learning_rate)
+        self.opt_lseRepNet = RMSprop(self.lseRepNet.parameters(), lr=config.learning_rate)
 
 
         # move to device
@@ -43,11 +47,13 @@ class Train:
 
 
         self.lseRepFusNet.to(environment_probe.device)
+        self.lseRepNet.to(environment_probe.device)
 
 
         if len(config.gpus) > 1:
             # parallel
             self.lseRepFusNet = nn.DataParallel(self.lseRepFusNet, device_ids=config.gpus, output_device=config.gpus[0])
+            self.lseRepNet = nn.DataParallel(self.lseRepNet, device_ids=config.gpus, output_device=config.gpus[0])
 
         # loss
         self.l1 = nn.L1Loss(reduction='none')
@@ -84,24 +90,21 @@ class Train:
 
     def train(self, epoch):
         process_train = tqdm(enumerate(self.train_loader), disable=not self.config.debug)
-        loss_total = 0.
+        loss_total, loss_mask = 0., 0.
         for idx, sample in process_train:
             ir, vi = sample[0].to(self.environment_probe.device), sample[1].to(self.environment_probe.device)
             loss = self.train_fusion(ir, vi)
             loss_total += loss['loss']
+            loss_mask += loss['l_mask']
         loss_avg = loss_total / len(self.train_loader)
-        self.logging.info(f'train----------fuse: {loss_avg:03f}')
+        loss_mask_avg = loss_mask / len(self.train_loader)
+        self.logging.info(f'train----------fuse: {loss_avg:03f}-------{loss_mask_avg:03f}')
         self.writer.add_scalar('Train/loss_avg', loss_avg, epoch)
+        self.writer.add_scalar('Train/loss_mask_avg', loss_mask_avg, epoch)
 
     def train_fusion(self, ir: Tensor, vi: Tensor):
-        self.lseRepFusNet.train()
-        fus = self.lseRepFusNet(ir, vi)
-        # calculate loss towards criterion
-        b1, b2, b3 = self.config.weight  # b1 * ssim + b2 * l1
-        vi_grad = self.gradient(vi)
-        ir_grad = self.gradient(ir)
-        grad_max = torch.max(vi_grad, ir_grad)
-
+        self.lseRepNet.train()
+        mask = self.lseRepNet(ir)
         zeros = torch.zeros_like(ir)
         ones = torch.ones_like(ir)
         mean = torch.mean(ir)
@@ -109,7 +112,27 @@ class Train:
         for i in range(1):
             mean = torch.mean(w)
             w = torch.where(w > mean, w, mean)
-        mask = torch.where(w > torch.mean(w), ones, zeros)
+        mask_lab = torch.where(w > torch.mean(w), ones, zeros)
+        # calculate loss towards criterion
+        b1, b2, b3 = self.config.weight  # b1 * ssim + b2 * l1
+        l_mask = b1 * self.ssim(mask, mask_lab) + b2 * self.l1(mask, mask_lab)
+        l_mask_grad = b1 * self.ssim(self.gradient(mask), self.gradient(ir)) + b2 * self.l1(self.gradient(mask), self.gradient(ir))
+        l_mask = l_mask.mean() + l_mask_grad.mean()
+        # backward
+        self.opt_lseRepNet.zero_grad()
+        l_mask.backward()
+        self.opt_lseRepNet.step()
+
+        self.lseRepNet.eval()
+        self.lseRepFusNet.train()
+        mask = self.lseRepNet(ir)
+        mask = torch.where(mask > torch.mean(mask), ones, zeros)
+        fus = self.lseRepFusNet(ir, vi)
+        # calculate loss towards criterion
+        b1, b2, b3 = self.config.weight  # b1 * ssim + b2 * l1
+        vi_grad = self.gradient(vi)
+        ir_grad = self.gradient(ir)
+        grad_max = torch.max(vi_grad, ir_grad)
         l_vi = b1 * self.ssim(fus * (1 - mask), vi * (1 - mask)) + b2 * self.l1(fus * (1 - mask), vi * (1 - mask))
         l_ir = b1 * self.ssim(fus * mask, torch.max(ir, vi) * mask) + b2 * self.l1(fus * mask, torch.max(ir, vi) * mask)
         l_grad = b1 * self.ssim(self.gradient(fus), grad_max) + b2 * self.l1(self.gradient(fus), grad_max)
@@ -122,31 +145,30 @@ class Train:
         # loss state
         state = {
             'loss': loss.item(),
+            'l_mask':l_mask.item()
         }
         return state
 
 
     def eval(self, epoch):
         process_val = tqdm(enumerate(self.val_loader), disable=not self.config.debug)
-        loss_total = 0.
+        loss_total, loss_mask = 0., 0.
         for idx, sample in process_val:
             ir, vi = sample[0].to(self.environment_probe.device), sample[1].to(self.environment_probe.device)
             loss = self.val_fusion(ir, vi)
             loss_total += loss['loss']
+            loss_mask += loss['l_mask']
         loss_avg = loss_total / len(self.train_loader)
-        self.logging.info(f'val----------fuse: {loss_avg:03f}')
+        loss_mask_avg = loss_mask / len(self.train_loader)
+        self.logging.info(f'val----------fuse: {loss_avg:03f}-----{loss_mask_avg:03f}')
         self.writer.add_scalar('Val/loss_avg', loss_avg, epoch)
+        self.writer.add_scalar('Val/loss_mask_avg', loss_mask_avg, epoch)
         self.save(epoch)
 
     @torch.no_grad()
     def val_fusion(self, ir: Tensor, vi: Tensor):
-        self.lseRepFusNet.eval()
-        fus = self.lseRepFusNet(ir, vi)
-        # calculate loss towards criterion
-        b1, b2, b3 = self.config.weight  # b1 * ssim + b2 * l1
-        vi_grad = self.gradient(vi)
-        ir_grad = self.gradient(ir)
-        grad_max = torch.max(vi_grad, ir_grad)
+        self.lseRepNet.eval()
+        mask = self.lseRepNet(ir)
         zeros = torch.zeros_like(ir)
         ones = torch.ones_like(ir)
         mean = torch.mean(ir)
@@ -154,7 +176,25 @@ class Train:
         for i in range(1):
             mean = torch.mean(w)
             w = torch.where(w > mean, w, mean)
-        mask = torch.where(w > torch.mean(w), ones, zeros)
+        mask_lab = torch.where(w > torch.mean(w), ones, zeros)
+        # calculate loss towards criterion
+        b1, b2, b3 = self.config.weight  # b1 * ssim + b2 * l1
+        l_mask = b1 * self.ssim(mask, mask_lab) + b2 * self.l1(mask, mask_lab)
+        l_mask_grad = b1 * self.ssim(self.gradient(mask), self.gradient(ir)) + b2 * self.l1(self.gradient(mask), self.gradient(ir))
+        l_mask = l_mask.mean() + l_mask_grad.mean()
+
+
+        self.lseRepNet.eval()
+        self.lseRepFusNet.eval()
+        mask = self.lseRepNet(ir)
+        mask = torch.where(mask > torch.mean(mask), ones, zeros)
+
+        fus = self.lseRepFusNet(ir, vi)
+        # calculate loss towards criterion
+        b1, b2, b3 = self.config.weight  # b1 * ssim + b2 * l1
+        vi_grad = self.gradient(vi)
+        ir_grad = self.gradient(ir)
+        grad_max = torch.max(vi_grad, ir_grad)
         l_vi = b1 * self.ssim(fus * (1 - mask), vi * (1 - mask)) + b2 * self.l1(fus * (1 - mask), vi * (1 - mask))
         l_ir = b1 * self.ssim(fus * mask, torch.max(ir, vi) * mask) + b2 * self.l1(fus * mask, torch.max(ir, vi) * mask)
         l_grad = b1 * self.ssim(self.gradient(fus), grad_max) + b2 * self.l1(self.gradient(fus), grad_max)
@@ -163,6 +203,8 @@ class Train:
         # loss state
         state = {
             'loss': loss.item(),
+            'l_mask': l_mask.item()
+
         }
         return state
 
@@ -174,6 +216,7 @@ class Train:
         self.logging.info(f'save checkpoint to {str(cache)}')
         state = {
             'lseRepFusNet': self.lseRepFusNet.state_dict(),
+            'lseRepNet': self.lseRepNet.state_dict(),
         }
         torch.save(state, cache)
 

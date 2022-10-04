@@ -236,6 +236,50 @@ class LseRepFusNet(nn.Module):
 
         return fus
 
+class LseRepNet(nn.Module):
+
+    def __init__(self, num_blocks, width_multiplier=None, override_groups_map=None, deploy=False, use_se=False):
+        super(LseRepNet, self).__init__()
+
+        assert len(width_multiplier) == 4
+
+        self.deploy = deploy
+        self.override_groups_map = override_groups_map or dict()
+        self.use_se = use_se
+
+        assert 0 not in self.override_groups_map
+
+        self.in_planes = min(64, int(64 * width_multiplier[0]))
+
+        self.encoder0 = RepVGGBlock(in_channels=1, out_channels=self.in_planes, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se)
+        self.cur_layer_idx = 1
+        self.encoder1 = self._make_stage(int(64 * width_multiplier[0]), num_blocks[0], stride=1)
+        self.encoder2 = self._make_stage(int(128 * width_multiplier[1]), num_blocks[1], stride=1)
+
+        self.decoder0 = ConvBnLeakyRelu2d(192, 96)
+        self.decoder1 = ConvBnLeakyRelu2d(96, 48)
+        self.decoder2 = ConvBnTanh2d(48, 1)
+
+
+    def _make_stage(self, planes, num_blocks, stride):
+        strides = [stride] + [1]*(num_blocks-1)
+        blocks = []
+        for stride in strides:
+            cur_groups = self.override_groups_map.get(self.cur_layer_idx, 1)
+            blocks.append(RepVGGBlock(in_channels=self.in_planes, out_channels=planes, kernel_size=3,
+                                      stride=stride, padding=1, groups=cur_groups, deploy=self.deploy, use_se=self.use_se))
+            self.in_planes = planes
+            self.cur_layer_idx += 1
+        return nn.Sequential(*blocks)
+
+    def forward(self, x):
+        out = self.encoder0(x)
+        out = self.encoder1(out)
+        out = self.encoder2(out)
+
+        out = self.decoder1(out)
+        out = self.decoder2(out)
+        return out
 
 
 class ConvBnLeakyRelu2d(nn.Module):
