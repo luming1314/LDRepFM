@@ -32,7 +32,7 @@ def parse_args() -> Namespace:
     # optimizer opt
     parser.add_argument('--learning_rate', type=float, default=1e-4, help='learning rate')
     # dataloader opt
-    parser.add_argument('--batch_size', type=int, default=80, help='dataloader batch size')
+    parser.add_argument('--batch_size', type=int, default=100, help='dataloader batch size')
     parser.add_argument('--num_workers', type=int, default=8, help='dataloader workers number')
 
     # experimental opt

@@ -17,8 +17,6 @@ from tensorboardX import SummaryWriter
 from modules.dataset import DataSets
 from modules.environment_probe import EnvironmentProbe
 from modules.model import LseRepFusNet
-
-
 class Train:
 
     def __init__(self, environment_probe: EnvironmentProbe, config: Namespace, logging: logging, writer: SummaryWriter):
@@ -54,6 +52,7 @@ class Train:
         # loss
         self.l1 = nn.L1Loss(reduction='none')
         self.ssim = SSIMLoss(window_size=11, reduction='none')
+        self.mse = nn.MSELoss()
 
         self.spatial = SpatialGradient('diff')
 
@@ -61,6 +60,8 @@ class Train:
 
         self.l1.cuda(environment_probe.device)
         self.ssim.cuda(environment_probe.device)
+        self.mse.cuda(environment_probe.device)
+
 
         # datasets
         folder = Path(config.folder)
@@ -100,8 +101,19 @@ class Train:
         vi_grad = self.gradient(vi)
         ir_grad = self.gradient(ir)
         grad_max = torch.max(vi_grad, ir_grad)
-        l_f = b1 * self.ssim(fus, torch.max(ir, vi)) + b2 * self.l1(fus, torch.max(ir, vi)) + b1 * self.ssim(self.gradient(fus), grad_max) +  b2 * self.l1(self.gradient(fus), grad_max)
-        l_f = l_f.mean()
+
+        zeros = torch.zeros_like(ir)
+        ones = torch.ones_like(ir)
+        mean = torch.mean(ir)
+        w = torch.where(ir > mean, ir, mean)
+        for i in range(1):
+            mean = torch.mean(w)
+            w = torch.where(w > mean, w, mean)
+        mask = torch.where(w > torch.mean(w), ones, zeros)
+        l_vi = b1 * self.ssim(fus * (1 - mask), vi * (1 - mask)) + b2 * self.l1(fus * (1 - mask), vi * (1 - mask))
+        l_ir = b1 * self.ssim(fus * mask, torch.max(ir, vi) * mask) + b2 * self.l1(fus * mask, torch.max(ir, vi) * mask)
+        l_grad = b1 * self.ssim(self.gradient(fus), grad_max) + b2 * self.l1(self.gradient(fus), grad_max)
+        l_f = l_vi.mean() + l_ir.mean() + l_grad.mean()
         loss = l_f
         # backward
         self.opt_lseRepFusNet.zero_grad()
@@ -135,8 +147,18 @@ class Train:
         vi_grad = self.gradient(vi)
         ir_grad = self.gradient(ir)
         grad_max = torch.max(vi_grad, ir_grad)
-        l_f = b1 * self.ssim(fus, torch.max(ir, vi)) + b2 * self.l1(fus, torch.max(ir, vi)) + b1 * self.ssim(self.gradient(fus), grad_max) +  b2 * self.l1(self.gradient(fus), grad_max)
-        l_f = l_f.mean()
+        zeros = torch.zeros_like(ir)
+        ones = torch.ones_like(ir)
+        mean = torch.mean(ir)
+        w = torch.where(ir > mean, ir, mean)
+        for i in range(1):
+            mean = torch.mean(w)
+            w = torch.where(w > mean, w, mean)
+        mask = torch.where(w > torch.mean(w), ones, zeros)
+        l_vi = b1 * self.ssim(fus * (1 - mask), vi * (1 - mask)) + b2 * self.l1(fus * (1 - mask), vi * (1 - mask))
+        l_ir = b1 * self.ssim(fus * mask, torch.max(ir, vi) * mask) + b2 * self.l1(fus * mask, torch.max(ir, vi) * mask)
+        l_grad = b1 * self.ssim(self.gradient(fus), grad_max) + b2 * self.l1(self.gradient(fus), grad_max)
+        l_f = l_vi.mean() + l_ir.mean() + l_grad.mean()
         loss = l_f
         # loss state
         state = {

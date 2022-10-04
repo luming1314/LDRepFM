@@ -210,7 +210,6 @@ class LseRepFusNet(nn.Module):
         # out = self.encoder0(ir_hide)
         # out = self.encoder1(out)
         # ir_hide_f = self.encoder2(out)
-
         out = self.encoder0(ir)
         out = self.encoder1(out)
         ir_f = self.encoder2(out)
