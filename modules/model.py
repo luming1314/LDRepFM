@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 import torch.nn as nn
 import numpy as np
 import torch
@@ -170,16 +172,8 @@ class LseRepFusNet(nn.Module):
         self.decoder1 = ConvBnLeakyRelu2d(96, 48)
         self.decoder2 = ConvBnTanh2d(48, 1)
 
-        self.scaleUp = nn.Sequential(
-            nn.Conv2d(96, 384, kernel_size=3, stride=1, padding=1),
-            nn.PixelShuffle(2),
-            nn.PReLU(),
-            #
-            nn.Conv2d(96, 384, kernel_size=3, stride=1, padding=1),
-            nn.PixelShuffle(2),
-            nn.PReLU(),
-        )
-
+        self.PA = Position_Attention(self.deploy, self.use_se)
+        self.con = ConvBnLeakyRelu2d(192, 96)
 
 
     def _make_stage(self, planes, num_blocks, stride):
@@ -193,32 +187,20 @@ class LseRepFusNet(nn.Module):
             self.cur_layer_idx += 1
         return nn.Sequential(*blocks)
 
-    def layer_separate(self, ir, vi):
-        fus = torch.max(ir, vi)
-        weight = fus - vi
-        weight_abs = torch.abs(weight.data)
-        vi_hide = weight_abs * vi
-        vi_salient = vi - vi_hide
-        ir_salient = weight_abs * ir
-        ir_hide = ir - ir_salient
-        return ir_hide, vi_salient, vi_hide, ir_salient
+
+    def attention_P(self, features):
+        return
 
     def forward(self, ir, vi):
-
-        # ir_hide, _, _, _ = self.layer_separate(ir, vi)
-        #
-        # out = self.encoder0(ir_hide)
-        # out = self.encoder1(out)
-        # ir_hide_f = self.encoder2(out)
         out = self.encoder0(ir)
         out = self.encoder1(out)
         ir_f = self.encoder2(out)
-        # ir_f = self.scaleUp(ir_f)
-
+        ir_f_p = ir_f * self.PA(ir_f)
+        ir_f = torch.cat([ir_f, ir_f_p], dim=1)
+        ir_f = self.con(ir_f)
         out = self.encoder0(vi)
         out = self.encoder1(out)
         vi_f = self.encoder2(out)
-        # vi_f = self.scaleUp(vi_f)
 
         out = torch.cat([vi_f , ir_f], dim=1)
 
@@ -226,15 +208,44 @@ class LseRepFusNet(nn.Module):
         out = self.decoder1(out)
         fus = self.decoder2(out)
 
-        # out = self.decoder0(vi_f)
-        # out = self.decoder1(vi_f)
-        # vi_final = self.decoder2(out)
-
-        # out = self.decoder0(ir_f)
-        # out = self.decoder1(ir_f)
-        # ir_final = self.decoder2(out)
-
         return fus
+
+class Position_Attention(nn.Module):
+    def __init__(self, deploy, use_se):
+        super(Position_Attention, self).__init__()
+        self.deploy = deploy
+        self.use_se = use_se
+        self.PA_module =nn.Sequential(OrderedDict([
+            ('GAP', nn.AdaptiveAvgPool3d((1, None, None))),
+            ('MaxPool', nn.MaxPool2d(kernel_size=2, stride=2, padding=0)),
+
+            ('conv1', nn.Sequential(RepVGGBlock(in_channels=1, out_channels=48, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se))),
+            ('AvgPool', nn.AvgPool2d(kernel_size=2, stride=2, padding=0)),
+
+            ('conv2', nn.Sequential(RepVGGBlock(in_channels=48, out_channels=96, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se))),
+            ('subpixel_conv1', nn.PixelShuffle(2)),
+
+            ('conv_k1', nn.Sequential(RepVGGBlock(in_channels=72, out_channels=4, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se))),
+            ('subpixel_conv2', nn.PixelShuffle(2)),
+
+            ('sigmoid', nn.Sigmoid())
+        ]))
+    #
+    def forward(self, f0):
+        f = self.PA_module.GAP(f0)
+        f = self.PA_module.MaxPool(f)
+        f_conv1 = self.PA_module.conv1(f)
+        f = self.PA_module.AvgPool(f_conv1)
+        f = self.PA_module.conv2(f)
+        f = self.PA_module.subpixel_conv1(f)
+        f = F.interpolate(f, f_conv1.shape[2:])
+        f = torch.cat((f_conv1, f), dim = 1)
+        f = self.PA_module.conv_k1(f)
+        f = self.PA_module.subpixel_conv2(f)
+        f = F.interpolate(f, f0.shape[2:])
+        w = self.PA_module.sigmoid(f)
+
+        return w
 
 class LseRepNet(nn.Module):
 
