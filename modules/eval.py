@@ -3,6 +3,7 @@ from typing import List
 
 import torch
 import torch.backends.cudnn
+import torchvision.transforms
 from torchvision.transforms import transforms
 
 from tqdm import tqdm
@@ -31,4 +32,5 @@ class Eval:
             ir, vi = [ir.half(), vi.half()] if self.half else [ir, vi]
             ir, vi = ir.to(self.device), vi.to(self.device)
             fus = self.net(ir.unsqueeze(0), vi.unsqueeze(0))[0].clip(0., 1.)
+
             pair.save_fus(dst / ir_path.name, fus, color)

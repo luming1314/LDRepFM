@@ -28,11 +28,11 @@ def parse_args() -> Namespace:
     parser.add_argument('--adv_weight', nargs='+', type=float, default=[1, 1], help='discriminator balance')
 
     # checkpoint opt
-    parser.add_argument('--epochs', type=int, default=400, help='epoch to train')
+    parser.add_argument('--epochs', type=int, default=300, help='epoch to train')
     # optimizer opt
     parser.add_argument('--learning_rate', type=float, default=1e-4, help='learning rate')
     # dataloader opt
-    parser.add_argument('--batch_size', type=int, default=100, help='dataloader batch size')
+    parser.add_argument('--batch_size', type=int, default=70, help='dataloader batch size')
     parser.add_argument('--num_workers', type=int, default=8, help='dataloader workers number')
 
     # experimental opt

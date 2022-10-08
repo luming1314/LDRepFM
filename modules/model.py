@@ -314,9 +314,6 @@ class ConvBnTanh2d(nn.Module):
 
     def forward(self,x):
         return torch.tanh(self.conv(x))/2+0.5
-
-
-
 if __name__ == '__main__':
     ir = torch.rand([8,1,224,224])
     vi = torch.rand([8,1,224,224])
