@@ -13,11 +13,11 @@ def parse_opt() -> Namespace:
     parser = argparse.ArgumentParser()
 
     # universal opt
-    parser.add_argument('--src', type=str, help='fusion data root path  DataSets include:[TNO/RoadScene/MSRS/M3FD]', default='data/test/M3FD' )
-    parser.add_argument('--dst', type=str, help='fusion images save path run save include:[TNO/RoadScene/MSRS/M3FD]', default='runs/test/M3FD')
+    parser.add_argument('--src', type=str, help='fusion data root path  DataSets include:[TNO/RoadScene/MSRS/M3FD]', default='data/test/TNO' )
+    parser.add_argument('--dst', type=str, help='fusion images save path run save include:[TNO/RoadScene/MSRS/M3FD]', default='runs/test/TNO')
 
-    parser.add_argument('--weights', type=str, default='cache/a1/125.pth', help='pretrained weights path')
-    parser.add_argument('--deploy_weight', type=str, default='cache/a2/125.pth', help='pretrained weights path')
+    parser.add_argument('--weights', type=str, default='cache/a1/268.pth', help='pretrained weights path')
+    parser.add_argument('--deploy_weight', type=str, default='cache/a2/268.pth', help='pretrained weights path')
     parser.add_argument('--color', action='store_true', help='colorize fused images with visible color channels', default=True)
 
     # fusion opt
@@ -64,6 +64,7 @@ if __name__ == '__main__':
     save_path = config.dst
     if config.mode == 'deploy':
         lseRepFusNet = repvgg_model_convert(lseRepFusNet, save_path=config.deploy_weight)
+        lseRepNet = repvgg_model_convert(lseRepNet, save_path=config.deploy_weight)
         save_path = config.dst + '/' + 'deploy'
 
     # images

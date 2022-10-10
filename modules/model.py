@@ -170,7 +170,8 @@ class LseRepFusNet(nn.Module):
 
         self.decoder0 = ConvBnLeakyRelu2d(192, 96)
         self.decoder1 = ConvBnLeakyRelu2d(96, 48)
-        self.decoder2 = ConvBnTanh2d(48, 1)
+        self.decoder2 = ConvBnLeakyRelu2d(48, 24)
+        self.decoder3 = ConvBnTanh2d(24, 1)
 
         self.PA = Position_Attention(self.deploy, self.use_se)
         self.con = ConvBnLeakyRelu2d(192, 96)
@@ -206,7 +207,8 @@ class LseRepFusNet(nn.Module):
 
         out = self.decoder0(out)
         out = self.decoder1(out)
-        fus = self.decoder2(out)
+        out = self.decoder2(out)
+        fus = self.decoder3(out)
 
         return fus
 
@@ -269,7 +271,8 @@ class LseRepNet(nn.Module):
 
         self.decoder0 = ConvBnLeakyRelu2d(192, 96)
         self.decoder1 = ConvBnLeakyRelu2d(96, 48)
-        self.decoder2 = ConvBnTanh2d(48, 1)
+        self.decoder2 = ConvBnLeakyRelu2d(48, 24)
+        self.decoder3 = ConvBnTanh2d(24, 1)
 
 
     def _make_stage(self, planes, num_blocks, stride):
@@ -290,6 +293,7 @@ class LseRepNet(nn.Module):
 
         out = self.decoder1(out)
         out = self.decoder2(out)
+        out = self.decoder3(out)
         return out
 
 
