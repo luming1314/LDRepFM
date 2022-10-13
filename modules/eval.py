@@ -25,17 +25,15 @@ class Eval:
     def __call__(self, ir_paths: List[Path], vi_paths: List[Path], dst: Path, color: bool = False):
         p_bar = tqdm(enumerate(zip(ir_paths, vi_paths)), total=len(ir_paths))
         for idx, (ir_path, vi_path) in p_bar:
-            assert ir_path.stem == vi_path.stem
+            # assert ir_path.stem == vi_path.stem
             p_bar.set_description(f'fusing {ir_path.stem} | device: {str(self.device)}')
             pair = ImagePair(ir_path, vi_path)
             ir, vi = pair.ir_t, pair.vi_t
             ir, vi = [ir.half(), vi.half()] if self.half else [ir, vi]
             ir, vi = ir.to(self.device), vi.to(self.device)
             fus = self.net(ir.unsqueeze(0), vi.unsqueeze(0))[0].clip(0., 1.)
-            # zeros = torch.zeros_like(ir)
-            # ones = torch.ones_like(ir)
-            # mask = torch.where(vi > zeros, ones, zeros)
-            # fus = torch.max(ir,vi) * mask
+
+            # fus = torch.max(ir,vi)
 
 
-            pair.save_fus(dst / ir_path.name, fus, color)
+            pair.save_fus_reid(dst / ir_path.name, fus, color)

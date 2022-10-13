@@ -45,3 +45,32 @@ class ImagePair:
         fus_c = cv2.cvtColor(fus_r, cv2.COLOR_YCrCb2BGR)
         cv2.imwrite(str(path), fus_c)
 
+
+    def save_fus_reid(self, path: Path, fus: Tensor, color: bool = False):
+        """
+        Colorize fusion image with visible color channels.
+        Args:
+            path: save fused image to specified path, if not exist, create it.
+            fus: fused image (ndarray: cv2)
+            color: colorize the fused image with visible color channels.
+        """
+
+        fus = kornia.utils.tensor_to_image(fus.squeeze().cpu()) * 255.
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if not color:
+            cv2.imwrite(str(path), fus)
+            return
+        fus = fus.astype(numpy.uint8)
+        cbcr = cv2.cvtColor(self.vi_c, cv2.COLOR_BGR2YCrCb)[:, :, -2:]
+        fus_r = numpy.concatenate([fus[..., numpy.newaxis], cbcr], axis=2)
+        fus_c = cv2.cvtColor(fus_r, cv2.COLOR_YCrCb2BGR)
+        path_dir = str(path)
+        file_name = path_dir.split('/')[-1]
+        path_dir = path_dir.split('.')[0].split('_')[-1]
+        path_parent = str(path.parent)
+        path_dir = os.path.join(path_parent, path_dir)
+        if not os.path.exists(path_dir):
+            os.mkdir(path_dir)
+        final_path = os.path.join(path_dir,file_name)
+        cv2.imwrite(final_path, fus_c)
+
