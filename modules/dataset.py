@@ -13,6 +13,7 @@ class DataSets(Data.Dataset):
 
         self.files_VIS = glob(os.path.join(root, "M3FD", "VIS", '*.*'))
         self.files_IR = glob(os.path.join(root, "M3FD", "IR", '*.*'))
+        self.files_Lab = glob(os.path.join(root, "M3FD", "Lab", '*.*'))
 
         self.gray = gray
         self._tensor = transforms.ToTensor()
@@ -31,15 +32,19 @@ class DataSets(Data.Dataset):
     def __getitem__(self, index):
         img_VIS = Image.open(self.files_VIS[index])
         img_IR = Image.open(self.files_IR[index])
+        img_Lab = Image.open(self.files_Lab[index])
 
         if self.transform is not None:
             img_VIS = self.transform(img_VIS)
             img_IR = self.transform(img_IR)
+            img_Lab = self.transform(img_Lab)
 
         if self.gray:
             img_VIS = img_VIS.convert('L')
             img_IR = img_IR.convert('L')
+            img_Lab = img_Lab.convert('L')
 
         img_VIS = self._tensor(img_VIS)
         img_IR = self._tensor(img_IR)
-        return img_IR, img_VIS
+        img_Lab = self._tensor(img_Lab)
+        return img_IR, img_VIS, img_Lab

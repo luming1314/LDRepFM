@@ -93,7 +93,8 @@ class Train:
         loss_total, loss_mask = 0., 0.
         for idx, sample in process_train:
             ir, vi = sample[0].to(self.environment_probe.device), sample[1].to(self.environment_probe.device)
-            loss = self.train_fusion(ir, vi)
+            people_mask = sample[2].to(self.environment_probe.device)
+            loss = self.train_fusion(ir, vi, people_mask)
             loss_total += loss['loss']
             loss_mask += loss['l_mask']
         loss_avg = loss_total / len(self.train_loader)
@@ -102,7 +103,7 @@ class Train:
         self.writer.add_scalar('Train/loss_avg', loss_avg, epoch)
         self.writer.add_scalar('Train/loss_mask_avg', loss_mask_avg, epoch)
 
-    def train_fusion(self, ir: Tensor, vi: Tensor):
+    def train_fusion(self, ir: Tensor, vi: Tensor, people_mask:Tensor):
         self.lseRepNet.train()
         mask = self.lseRepNet(ir)
         zeros = torch.zeros_like(ir)
@@ -127,6 +128,7 @@ class Train:
         self.lseRepFusNet.train()
         mask = self.lseRepNet(ir)
         mask = torch.where(mask > torch.mean(mask), ones, zeros)
+        people_mask = torch.where(people_mask > zeros, ones, zeros)
         fus = self.lseRepFusNet(ir, vi)
         # calculate loss towards criterion
         b1, b2, b3 = self.config.weight  # b1 * ssim + b2 * l1
@@ -135,8 +137,9 @@ class Train:
         grad_max = torch.max(vi_grad, ir_grad)
         l_vi = b1 * self.ssim(fus , vi ) + b2 * self.l1(fus , vi )
         l_ir = b1 * self.ssim(fus * mask, torch.max(ir, vi) * mask) + b2 * self.l1(fus * mask, torch.max(ir, vi) * mask)
+        l_bright = b1 * self.ssim(fus * people_mask, ir * people_mask) + b2 * self.l1(fus * people_mask, ir * people_mask)
         l_grad = b1 * self.ssim(self.gradient(fus), grad_max) + b2 * self.l1(self.gradient(fus), grad_max)
-        l_f = l_vi.mean() + l_ir.mean() + l_grad.mean()
+        l_f = l_vi.mean() + l_ir.mean() + l_grad.mean() + l_bright.mean()
         loss = l_f
         # backward
         self.opt_lseRepFusNet.zero_grad()
@@ -155,7 +158,8 @@ class Train:
         loss_total, loss_mask = 0., 0.
         for idx, sample in process_val:
             ir, vi = sample[0].to(self.environment_probe.device), sample[1].to(self.environment_probe.device)
-            loss = self.val_fusion(ir, vi)
+            people_mask = sample[2].to(self.environment_probe.device)
+            loss = self.val_fusion(ir, vi, people_mask)
             loss_total += loss['loss']
             loss_mask += loss['l_mask']
         loss_avg = loss_total / len(self.train_loader)
@@ -166,7 +170,7 @@ class Train:
         self.save(epoch)
 
     @torch.no_grad()
-    def val_fusion(self, ir: Tensor, vi: Tensor):
+    def val_fusion(self, ir: Tensor, vi: Tensor, people_mask: Tensor):
         self.lseRepNet.eval()
         mask = self.lseRepNet(ir)
         zeros = torch.zeros_like(ir)
@@ -188,7 +192,7 @@ class Train:
         self.lseRepFusNet.eval()
         mask = self.lseRepNet(ir)
         mask = torch.where(mask > torch.mean(mask), ones, zeros)
-
+        people_mask = torch.where(people_mask > zeros, ones, zeros)
         fus = self.lseRepFusNet(ir, vi)
         # calculate loss towards criterion
         b1, b2, b3 = self.config.weight  # b1 * ssim + b2 * l1
@@ -197,8 +201,9 @@ class Train:
         grad_max = torch.max(vi_grad, ir_grad)
         l_vi = b1 * self.ssim(fus , vi ) + b2 * self.l1(fus , vi )
         l_ir = b1 * self.ssim(fus * mask, torch.max(ir, vi) * mask) + b2 * self.l1(fus * mask, torch.max(ir, vi) * mask)
+        l_bright = b1 * self.ssim(fus * people_mask, ir * people_mask) + b2 * self.l1(fus * people_mask, ir * people_mask)
         l_grad = b1 * self.ssim(self.gradient(fus), grad_max) + b2 * self.l1(self.gradient(fus), grad_max)
-        l_f = l_vi.mean() + l_ir.mean() + l_grad.mean()
+        l_f = l_vi.mean() + l_ir.mean() + l_grad.mean() + l_bright.mean()
         loss = l_f
         # loss state
         state = {

@@ -23,10 +23,17 @@
           </mappings>
         </serverdata>
       </paths>
+      <paths name="luming@172.18.65.195:22 (4)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
       <paths name="luming@172.18.65.195:22 password">
         <serverdata>
           <mappings>
-            <mapping deploy="/data/luming/LseRepFusNet" local="$PROJECT_DIR$" />
+            <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
