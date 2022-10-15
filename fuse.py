@@ -30,7 +30,7 @@ def parse_opt() -> Namespace:
     parser.add_argument('--gpus', type=lambda s: [int(item.strip()) for item in s.split(',')], default='2',
                         help='comma delimited of gpu ids to use. Use "-1" for cpu usage')
     # deploy
-    parser.add_argument('--mode', metavar='MODE', default='train', choices=['train', 'deploy'], help='train or deploy')
+    parser.add_argument('--mode', metavar='MODE', default='deploy', choices=['train', 'deploy'], help='train or deploy')
 
 
     return parser.parse_args()

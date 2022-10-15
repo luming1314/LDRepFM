@@ -36,4 +36,5 @@ class Eval:
             # fus = torch.max(ir,vi)
 
 
-            pair.save_fus_reid(dst / ir_path.name, fus, color)
+
+            pair.save_fus(dst / ir_path.name, fus, color)

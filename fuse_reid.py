@@ -17,8 +17,8 @@ def parse_opt() -> Namespace:
     parser.add_argument('--src', type=str, help='fusion data root path  DataSets include:[TNO/RoadScene/MSRS/M3FD]', default='data/test/RegDB' )
     parser.add_argument('--dst', type=str, help='fusion images save path run save include:[TNO/RoadScene/MSRS/M3FD]', default='runs/test/RegDB')
 
-    parser.add_argument('--weights', type=str, default='cache/a1/300.pth', help='pretrained weights path')
-    parser.add_argument('--deploy_weight', type=str, default='cache/a2/300.pth', help='pretrained weights path')
+    parser.add_argument('--weights', type=str, default='cache/a1/008.pth', help='pretrained weights path')
+    parser.add_argument('--deploy_weight', type=str, default='cache/a2/008.pth', help='pretrained weights path')
     parser.add_argument('--color', action='store_true', help='colorize fused images with visible color channels', default=True)
 
     # fusion opt
@@ -90,7 +90,7 @@ if __name__ == '__main__':
     # ir_paths = [x for x in sorted((root / 'Thermal').glob('*')) if img_filter]
     # vi_paths = [x for x in sorted((root / 'Visible').glob('*')) if img_filter]
 
-    f = Eval(lseRepFusNet, device=device, cudnn=config.cudnn, half=config.half, eval=config.eval)
+    f = Eval(lseRepNet, device=device, cudnn=config.cudnn, half=config.half, eval=config.eval)
     f(ir_paths, vi_paths, Path(save_path), config.color)
 
 

@@ -117,7 +117,11 @@ class Train:
         # calculate loss towards criterion
         b1, b2, b3 = self.config.weight  # b1 * ssim + b2 * l1
         l_mask = b1 * self.ssim(mask, mask_lab * ir) + b2 * self.l1(mask, mask_lab * ir)
-        l_mask_grad = b1 * self.ssim(self.gradient(mask), self.gradient(ir)) + b2 * self.l1(self.gradient(mask), self.gradient(ir))
+        mask_grad = self.gradient(mask)
+        ir_grad = self.gradient(ir)
+        mask_grad_bin = torch.where(mask_grad > mask_grad.mean(), ones, zeros)
+        ir_grad_bin = torch.where(ir_grad > ir_grad.mean(), ones, zeros)
+        l_mask_grad = b1 * self.mse(mask_grad_bin, ir_grad_bin) + b2 * self.l1(mask_grad_bin, ir_grad_bin)
         l_mask = l_mask.mean() + l_mask_grad.mean()
         # backward
         self.opt_lseRepNet.zero_grad()
@@ -184,7 +188,11 @@ class Train:
         # calculate loss towards criterion
         b1, b2, b3 = self.config.weight  # b1 * ssim + b2 * l1
         l_mask = b1 * self.ssim(mask, mask_lab * ir) + b2 * self.l1(mask, mask_lab * ir)
-        l_mask_grad = b1 * self.ssim(self.gradient(mask), self.gradient(ir)) + b2 * self.l1(self.gradient(mask), self.gradient(ir))
+        mask_grad = self.gradient(mask)
+        ir_grad = self.gradient(ir)
+        mask_grad_bin = torch.where(mask_grad > mask_grad.mean(), ones, zeros)
+        ir_grad_bin = torch.where(ir_grad > ir_grad.mean(), ones, zeros)
+        l_mask_grad = b1 * self.mse(mask_grad_bin, ir_grad_bin) + b2 * self.l1(mask_grad_bin, ir_grad_bin)
         l_mask = l_mask.mean() + l_mask_grad.mean()
 
 
