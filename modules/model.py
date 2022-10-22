@@ -322,5 +322,6 @@ if __name__ == '__main__':
     ir = torch.rand([8,1,224,224])
     vi = torch.rand([8,1,224,224])
     lseRepFusNet = LseRepFusNet(num_blocks=[2, 4, 14, 1], width_multiplier=[0.75, 0.75, 0.75, 2.5], override_groups_map=None, deploy=False)
-
+    LseRepNet = LseRepNet(num_blocks=[2, 4, 14, 1], width_multiplier=[0.75, 0.75, 0.75, 2.5], override_groups_map=None, deploy=False)
+    LseRepNet(ir)
     t = lseRepFusNet(ir, vi)

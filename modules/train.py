@@ -94,7 +94,8 @@ class Train:
         for idx, sample in process_train:
             ir, vi = sample[0].to(self.environment_probe.device), sample[1].to(self.environment_probe.device)
             people_mask = sample[2].to(self.environment_probe.device)
-            loss = self.train_fusion(ir, vi, people_mask)
+            m3fd_mask = sample[3].to(self.environment_probe.device)
+            loss = self.train_fusion(ir, vi, people_mask, m3fd_mask)
             loss_total += loss['loss']
             loss_mask += loss['l_mask']
         loss_avg = loss_total / len(self.train_loader)
@@ -103,7 +104,7 @@ class Train:
         self.writer.add_scalar('Train/loss_avg', loss_avg, epoch)
         self.writer.add_scalar('Train/loss_mask_avg', loss_mask_avg, epoch)
 
-    def train_fusion(self, ir: Tensor, vi: Tensor, people_mask:Tensor):
+    def train_fusion(self, ir: Tensor, vi: Tensor, people_mask: Tensor, m3fd_mask: Tensor):
         self.lseRepNet.train()
         mask = self.lseRepNet(ir)
         zeros = torch.zeros_like(ir)
@@ -114,14 +115,20 @@ class Train:
             mean = torch.mean(w)
             w = torch.where(w > mean, w, mean)
         mask_lab = torch.where(w > torch.mean(w), ones, zeros)
+        people_mask = torch.where(people_mask > zeros, ones, zeros)
+        m3fd_mask = torch.where(m3fd_mask > zeros, ones, zeros)
+        unite_mask = mask_lab + m3fd_mask
+        unite_mask = torch.where(unite_mask > zeros, ones, zeros)
         # calculate loss towards criterion
         b1, b2, b3 = self.config.weight  # b1 * ssim + b2 * l1
-        l_mask = b1 * self.ssim(mask, mask_lab * ir) + b2 * self.l1(mask, mask_lab * ir)
+        l_mask = b1 * self.ssim(mask, unite_mask * ir) + b2 * self.l1(mask, unite_mask * ir)
         mask_grad = self.gradient(mask)
         ir_grad = self.gradient(ir)
-        mask_grad_bin = torch.where(mask_grad > mask_grad.mean(), ones, zeros)
-        ir_grad_bin = torch.where(ir_grad > ir_grad.mean(), ones, zeros)
-        l_mask_grad = b1 * self.mse(mask_grad_bin, ir_grad_bin) + b2 * self.l1(mask_grad_bin, ir_grad_bin)
+        l_mask_grad = b1 * self.mse(mask_grad, ir_grad) + b2 * self.l1(mask_grad, ir_grad)
+
+        # mask_grad_bin = torch.where(mask_grad > mask_grad.mean(), ones, zeros)
+        # ir_grad_bin = torch.where(ir_grad > ir_grad.mean(), ones, zeros)
+        # l_mask_grad = b1 * self.mse(mask_grad_bin, ir_grad_bin) + b2 * self.l1(mask_grad_bin, ir_grad_bin)
         l_mask = l_mask.mean() + l_mask_grad.mean()
         # backward
         self.opt_lseRepNet.zero_grad()
@@ -132,7 +139,7 @@ class Train:
         self.lseRepFusNet.train()
         mask = self.lseRepNet(ir)
         mask = torch.where(mask > torch.mean(mask), ones, zeros)
-        people_mask = torch.where(people_mask > zeros, ones, zeros)
+        # people_mask = torch.where(people_mask > zeros, ones, zeros)
         fus = self.lseRepFusNet(ir, vi)
         # calculate loss towards criterion
         b1, b2, b3 = self.config.weight  # b1 * ssim + b2 * l1
@@ -163,7 +170,8 @@ class Train:
         for idx, sample in process_val:
             ir, vi = sample[0].to(self.environment_probe.device), sample[1].to(self.environment_probe.device)
             people_mask = sample[2].to(self.environment_probe.device)
-            loss = self.val_fusion(ir, vi, people_mask)
+            m3fd_mask = sample[3].to(self.environment_probe.device)
+            loss = self.val_fusion(ir, vi, people_mask, m3fd_mask)
             loss_total += loss['loss']
             loss_mask += loss['l_mask']
         loss_avg = loss_total / len(self.train_loader)
@@ -174,7 +182,7 @@ class Train:
         self.save(epoch)
 
     @torch.no_grad()
-    def val_fusion(self, ir: Tensor, vi: Tensor, people_mask: Tensor):
+    def val_fusion(self, ir: Tensor, vi: Tensor, people_mask: Tensor, m3fd_mask: Tensor):
         self.lseRepNet.eval()
         mask = self.lseRepNet(ir)
         zeros = torch.zeros_like(ir)
@@ -185,14 +193,19 @@ class Train:
             mean = torch.mean(w)
             w = torch.where(w > mean, w, mean)
         mask_lab = torch.where(w > torch.mean(w), ones, zeros)
+        people_mask = torch.where(people_mask > zeros, ones, zeros)
+        m3fd_mask = torch.where(m3fd_mask > zeros, ones, zeros)
+        unite_mask = mask_lab + m3fd_mask
+        unite_mask = torch.where(unite_mask > zeros, ones, zeros)
         # calculate loss towards criterion
         b1, b2, b3 = self.config.weight  # b1 * ssim + b2 * l1
-        l_mask = b1 * self.ssim(mask, mask_lab * ir) + b2 * self.l1(mask, mask_lab * ir)
+        l_mask = b1 * self.ssim(mask, unite_mask * ir) + b2 * self.l1(mask, unite_mask * ir)
         mask_grad = self.gradient(mask)
         ir_grad = self.gradient(ir)
-        mask_grad_bin = torch.where(mask_grad > mask_grad.mean(), ones, zeros)
-        ir_grad_bin = torch.where(ir_grad > ir_grad.mean(), ones, zeros)
-        l_mask_grad = b1 * self.mse(mask_grad_bin, ir_grad_bin) + b2 * self.l1(mask_grad_bin, ir_grad_bin)
+        l_mask_grad = b1 * self.mse(mask_grad, ir_grad) + b2 * self.l1(mask_grad, ir_grad)
+        # mask_grad_bin = torch.where(mask_grad > mask_grad.mean(), ones, zeros)
+        # ir_grad_bin = torch.where(ir_grad > ir_grad.mean(), ones, zeros)
+        # l_mask_grad = b1 * self.mse(mask_grad_bin, ir_grad_bin) + b2 * self.l1(mask_grad_bin, ir_grad_bin)
         l_mask = l_mask.mean() + l_mask_grad.mean()
 
 
@@ -200,7 +213,7 @@ class Train:
         self.lseRepFusNet.eval()
         mask = self.lseRepNet(ir)
         mask = torch.where(mask > torch.mean(mask), ones, zeros)
-        people_mask = torch.where(people_mask > zeros, ones, zeros)
+        # people_mask = torch.where(people_mask > zeros, ones, zeros)
         fus = self.lseRepFusNet(ir, vi)
         # calculate loss towards criterion
         b1, b2, b3 = self.config.weight  # b1 * ssim + b2 * l1
