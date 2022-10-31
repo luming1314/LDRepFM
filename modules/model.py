@@ -217,35 +217,50 @@ class Position_Attention(nn.Module):
         super(Position_Attention, self).__init__()
         self.deploy = deploy
         self.use_se = use_se
+        self.cur_layer_idx = 1
+        self.in_planes = 48
+        self.override_groups_map = None or dict()
         self.PA_module =nn.Sequential(OrderedDict([
             ('GAP', nn.AdaptiveAvgPool3d((1, None, None))),
             ('MaxPool', nn.MaxPool2d(kernel_size=2, stride=2, padding=0)),
 
             ('conv1', nn.Sequential(RepVGGBlock(in_channels=1, out_channels=48, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se))),
-            ('AvgPool', nn.AvgPool2d(kernel_size=2, stride=2, padding=0)),
+            ('conv1_1', self._make_stage(48, 2, stride=2)),
 
-            ('conv2', nn.Sequential(RepVGGBlock(in_channels=48, out_channels=96, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se))),
+            ('conv2', nn.Sequential(nn.Conv2d(48, 96, kernel_size=3, stride=1, padding=1))),
             ('subpixel_conv1', nn.PixelShuffle(2)),
-
-            ('conv_k1', nn.Sequential(RepVGGBlock(in_channels=72, out_channels=4, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se))),
+            ('sigmoid1', nn.Sigmoid()),
+            ('conv_k1', nn.Sequential(nn.Conv2d(72, 4, kernel_size=3, stride=1, padding=1))),
             ('subpixel_conv2', nn.PixelShuffle(2)),
-
-            ('sigmoid', nn.Sigmoid())
+            ('sigmoid2', nn.Sigmoid())
         ]))
+
+    def _make_stage(self, planes, num_blocks, stride):
+        strides = [stride] + [1]*(num_blocks-1)
+        blocks = []
+        for stride in strides:
+            cur_groups = self.override_groups_map.get(self.cur_layer_idx, 1)
+            blocks.append(RepVGGBlock(in_channels=self.in_planes, out_channels=planes, kernel_size=3,
+                                      stride=stride, padding=1, groups=cur_groups, deploy=self.deploy, use_se=self.use_se))
+            self.in_planes = planes
+            self.cur_layer_idx += 1
+        return nn.Sequential(*blocks)
     #
     def forward(self, f0):
         f = self.PA_module.GAP(f0)
         f = self.PA_module.MaxPool(f)
         f_conv1 = self.PA_module.conv1(f)
-        f = self.PA_module.AvgPool(f_conv1)
+        # f = self.PA_module.AvgPool(f_conv1)
+        f = self.PA_module.conv1_1(f_conv1)
         f = self.PA_module.conv2(f)
         f = self.PA_module.subpixel_conv1(f)
+        f = self.PA_module.sigmoid1(f)
         f = F.interpolate(f, f_conv1.shape[2:])
         f = torch.cat((f_conv1, f), dim = 1)
         f = self.PA_module.conv_k1(f)
         f = self.PA_module.subpixel_conv2(f)
         f = F.interpolate(f, f0.shape[2:])
-        w = self.PA_module.sigmoid(f)
+        w = self.PA_module.sigmoid2(f)
 
         return w
 
