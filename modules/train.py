@@ -140,13 +140,14 @@ class Train:
         mask = self.lseRepNet(ir)
         mask = torch.where(mask > torch.mean(mask), ones, zeros)
         # people_mask = torch.where(people_mask > zeros, ones, zeros)
-        fus = self.lseRepFusNet(ir, vi)
+        fus = self.lseRepFusNet(ir , vi )
         # calculate loss towards criterion
         b1, b2, b3 = self.config.weight  # b1 * ssim + b2 * l1
         vi_grad = self.gradient(vi)
         ir_grad = self.gradient(ir)
         grad_max = torch.max(vi_grad, ir_grad)
-        l_vi = b1 * self.ssim(fus , vi * (1 - people_mask) + ir * people_mask  ) + b2 * self.l1(fus , vi * (1 - people_mask) + ir * people_mask )
+        # l_vi = b1 * self.ssim(fus , vi * (1 - people_mask) + ir * people_mask  ) + b2 * self.l1(fus , vi * (1 - people_mask) + ir * people_mask )
+        l_vi = b1 * self.ssim(fus , vi ) + b2 * self.l1(fus , vi  )
         # l_ir = b1 * self.ssim(fus * mask, torch.max(ir, vi) * mask) + b2 * self.l1(fus * mask, torch.max(ir, vi) * mask)
         l_ir = b1 * self.ssim(fus * mask, ir * mask) + b2 * self.l1(fus * mask, ir * mask)
         # l_bright = b1 * self.ssim(fus * people_mask, ir * people_mask) + b2 * self.l1(fus * people_mask, ir * people_mask)
@@ -216,13 +217,14 @@ class Train:
         mask = self.lseRepNet(ir)
         mask = torch.where(mask > torch.mean(mask), ones, zeros)
         # people_mask = torch.where(people_mask > zeros, ones, zeros)
-        fus = self.lseRepFusNet(ir, vi)
+        fus = self.lseRepFusNet(ir , vi )
         # calculate loss towards criterion
         b1, b2, b3 = self.config.weight  # b1 * ssim + b2 * l1
         vi_grad = self.gradient(vi)
         ir_grad = self.gradient(ir)
         grad_max = torch.max(vi_grad, ir_grad)
-        l_vi = b1 * self.ssim(fus , vi * (1 - people_mask) + ir * people_mask) + b2 * self.l1(fus , vi * (1 - people_mask) + ir * people_mask )
+        # l_vi = b1 * self.ssim(fus , vi * (1 - people_mask) + ir * people_mask) + b2 * self.l1(fus , vi * (1 - people_mask) + ir * people_mask )
+        l_vi = b1 * self.ssim(fus , vi ) + b2 * self.l1(fus , vi )
         # l_ir = b1 * self.ssim(fus * mask, torch.max(ir, vi) * mask) + b2 * self.l1(fus * mask, torch.max(ir, vi) * mask)
         l_ir = b1 * self.ssim(fus * mask, ir * mask) + b2 * self.l1(fus * mask, ir * mask)
         # l_bright = b1 * self.ssim(fus * people_mask, ir * people_mask) + b2 * self.l1(fus * people_mask, ir * people_mask)
@@ -255,6 +257,11 @@ class Train:
         dx, dy = s[:, :, 0, :, :], s[:, :, 1, :, :]
         u = torch.sqrt(torch.pow(dx, 2) + torch.pow(dy, 2) + eps)
         return u
+
+    def gaussian(self, img, mean, std):
+        b, c, h, w = img.size()
+        noise = torch.randn([b, c, h, w]).to(img.device) * std + mean
+        return noise
 
 
 

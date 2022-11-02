@@ -16,8 +16,8 @@ def parse_opt() -> Namespace:
     parser.add_argument('--src', type=str, help='fusion data root path  DataSets include:[TNO/RoadScene/MSRS/M3FD]', default='data/test/M3FD' )
     parser.add_argument('--dst', type=str, help='fusion images save path run save include:[TNO/RoadScene/MSRS/M3FD]', default='runs/test/M3FD')
 
-    parser.add_argument('--weights', type=str, default='cache/a1/038.pth', help='pretrained weights path')
-    parser.add_argument('--deploy_weight', type=str, default='cache/a2/038.pth', help='pretrained weights path')
+    parser.add_argument('--weights', type=str, default='cache/a1/045.pth', help='pretrained weights path')
+    parser.add_argument('--deploy_weight', type=str, default='cache/a2/045.pth', help='pretrained weights path')
     parser.add_argument('--color', action='store_true', help='colorize fused images with visible color channels', default=True)
 
     # fusion opt
@@ -27,10 +27,10 @@ def parse_opt() -> Namespace:
     parser.add_argument('--eval', action='store_true', help='use eval mode for new pytorch models')
     parser.add_argument('--half', action='store_true', help='use half mode for new pytorch models')
     # gpus
-    parser.add_argument('--gpus', type=lambda s: [int(item.strip()) for item in s.split(',')], default='2',
+    parser.add_argument('--gpus', type=lambda s: [int(item.strip()) for item in s.split(',')], default='5',
                         help='comma delimited of gpu ids to use. Use "-1" for cpu usage')
     # deploy
-    parser.add_argument('--mode', metavar='MODE', default='deploy', choices=['train', 'deploy'], help='train or deploy')
+    parser.add_argument('--mode', metavar='MODE', default='train', choices=['train', 'deploy'], help='train or deploy')
 
 
     return parser.parse_args()
@@ -73,7 +73,7 @@ if __name__ == '__main__':
     vi_paths = [x for x in sorted((root / 'vi').glob('*')) if img_filter]
     # vi_paths = [x for x in sorted((root / 'lab').glob('*')) if img_filter]
 
-    f = Eval(lseRepNet, device=device, cudnn=config.cudnn, half=config.half, eval=config.eval)
+    f = Eval(lseRepFusNet, device=device, cudnn=config.cudnn, half=config.half, eval=config.eval)
     f(ir_paths, vi_paths, Path(save_path), config.color)
 
 

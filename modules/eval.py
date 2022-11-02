@@ -35,6 +35,7 @@ class Eval:
             ir, vi = [ir.half(), vi.half()] if self.half else [ir, vi]
             ir, vi = ir.to(self.device), vi.to(self.device)
             fus = self.net(ir.unsqueeze(0), vi.unsqueeze(0))[0].clip(0., 1.)
+            b,c,h,w = ir.unsqueeze(0).size()
 
             # fus = self.net(ir.unsqueeze(0))[0].clip(0., 1.)
             # fus = torch.where(fus > fus.mean(), 1., 0.)[0]
