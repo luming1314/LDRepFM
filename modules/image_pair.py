@@ -45,6 +45,18 @@ class ImagePair:
         fus_c = cv2.cvtColor(fus_r, cv2.COLOR_YCrCb2BGR)
         cv2.imwrite(str(path), fus_c)
 
+    def save_lab(self, path: Path, fus: Tensor, color: bool = False):
+        """
+        Colorize fusion image with visible color channels.
+        Args:
+            path: save fused image to specified path, if not exist, create it.
+            fus: fused image (ndarray: cv2)
+            color: colorize the fused image with visible color channels.
+        """
+        image = Image.fromarray(np.uint8(fus.cpu()))
+        save_path = path
+        image.save(save_path)
+
 
     def save_fus_reid(self, path: Path, fus: Tensor, color: bool = False):
         """

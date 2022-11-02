@@ -37,13 +37,13 @@ class Eval:
             fus = self.net(ir.unsqueeze(0), vi.unsqueeze(0))[0].clip(0., 1.)
 
             # fus = self.net(ir.unsqueeze(0))[0].clip(0., 1.)
-            # fus = torch.where(ir < vi, 1., 0.) * ir
+            # fus = torch.where(fus > fus.mean(), 1., 0.)[0]
 
-            # fus = torch.max(ir,vi)
 
 
 
             pair.save_fus(dst / ir_path.name, fus, color)
+            # pair.save_lab(dst / ir_path.name, fus, color)
 
     @torch.no_grad()
     def getGradMap(self, ir_paths: List[Path], vi_paths: List[Path], dst: Path, color: bool = False):
