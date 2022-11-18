@@ -13,11 +13,11 @@ def parse_opt() -> Namespace:
     parser = argparse.ArgumentParser()
 
     # universal opt
-    parser.add_argument('--src', type=str, help='fusion data root path  DataSets include:[TNO/RoadScene/MSRS/M3FD]', default='data/test/M3FD' )
-    parser.add_argument('--dst', type=str, help='fusion images save path run save include:[TNO/RoadScene/MSRS/M3FD]', default='runs/test/M3FD')
+    parser.add_argument('--src', type=str, help='fusion data root path  DataSets include:[TNO/RoadScene/MSRS/M3FD]', default='data/test/TNO' )
+    parser.add_argument('--dst', type=str, help='fusion images save path run save include:[TNO/RoadScene/MSRS/M3FD]', default='runs/test/TNO')
 
-    parser.add_argument('--weights', type=str, default='cache/a1/045.pth', help='pretrained weights path')
-    parser.add_argument('--deploy_weight', type=str, default='cache/a2/045.pth', help='pretrained weights path')
+    parser.add_argument('--weights', type=str, default='cache/a1/050.pth', help='pretrained weights path')
+    parser.add_argument('--deploy_weight', type=str, default='cache/a2/050.pth', help='pretrained weights path')
     parser.add_argument('--color', action='store_true', help='colorize fused images with visible color channels', default=True)
 
     # fusion opt
@@ -31,6 +31,7 @@ def parse_opt() -> Namespace:
                         help='comma delimited of gpu ids to use. Use "-1" for cpu usage')
     # deploy
     parser.add_argument('--mode', metavar='MODE', default='train', choices=['train', 'deploy'], help='train or deploy')
+    parser.add_argument('--card', metavar='MODE', default='single', choices=['multi', 'single'], help='train is multi or single')
 
 
     return parser.parse_args()
@@ -52,12 +53,13 @@ if __name__ == '__main__':
     # load pretrained weights
     ck_pt = torch.load(config.weights, map_location=device)
     # Multi card parallelism, removing the module in the weight
-    for i, j in ck_pt.items():
-        state_dict = OrderedDict()
-        for k, v in j.items():
-            name = k[7:]  # remove `module.`
-            state_dict[name] = v
-        ck_pt[i] = state_dict
+    if config.card == 'multi':
+        for i, j in ck_pt.items():
+            state_dict = OrderedDict()
+            for k, v in j.items():
+                name = k[7:]  # remove `module.`
+                state_dict[name] = v
+            ck_pt[i] = state_dict
 
     lseRepFusNet.load_state_dict(ck_pt['lseRepFusNet'])
     lseRepNet.load_state_dict(ck_pt['lseRepNet'])

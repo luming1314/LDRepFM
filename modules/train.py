@@ -229,8 +229,8 @@ class Train:
         l_ir = b1 * self.ssim(fus * mask, ir * mask) + b2 * self.l1(fus * mask, ir * mask)
         # l_bright = b1 * self.ssim(fus * people_mask, ir * people_mask) + b2 * self.l1(fus * people_mask, ir * people_mask)
         l_grad = b1 * self.ssim(self.gradient(fus), grad_max) + b2 * self.l1(self.gradient(fus), grad_max)
-        # l_f = l_vi.mean() + l_ir.mean() + l_grad.mean() + l_bright.mean()
         l_f = l_vi.mean() + l_ir.mean() + l_grad.mean()
+        # l_f = l_vi.mean() + l_ir.mean() + l_grad.mean()
         loss = l_f
         # loss state
         state = {

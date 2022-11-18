@@ -168,6 +168,10 @@ class LseRepFusNet(nn.Module):
         self.encoder1 = self._make_stage(int(64 * width_multiplier[0]), num_blocks[0], stride=1)
         self.encoder2 = self._make_stage(int(128 * width_multiplier[1]), num_blocks[1], stride=1)
 
+        self.encoder0_vi = copy.deepcopy(self.encoder0)
+        self.encoder1_vi = copy.deepcopy(self.encoder1)
+        self.encoder2_vi = copy.deepcopy(self.encoder2)
+
         self.decoder0 = ConvBnLeakyRelu2d(192, 96)
         self.decoder1 = ConvBnLeakyRelu2d(96, 48)
         self.decoder2 = ConvBnLeakyRelu2d(48, 24)
@@ -175,6 +179,9 @@ class LseRepFusNet(nn.Module):
 
         self.PA = Position_Attention(self.deploy, self.use_se)
         self.con = ConvBnLeakyRelu2d(192, 96)
+
+        self.sobel = Sobelxy(96)
+        self.sobelConv = ConvBnLeakyRelu2d(96, 96)
 
 
     def _make_stage(self, planes, num_blocks, stride):
@@ -199,11 +206,19 @@ class LseRepFusNet(nn.Module):
         ir_f_p = ir_f * self.PA(ir_f)
         ir_f = torch.cat([ir_f, ir_f_p], dim=1)
         ir_f = self.con(ir_f)
+        ir_f_grad = self.sobel(ir_f)
+        ir_f = ir_f + ir_f_grad
+        ir_f = self.sobelConv(ir_f)
+
         out = self.encoder0(vi)
         out = self.encoder1(out)
         vi_f = self.encoder2(out)
+        vi_f_grad = self.sobel(vi_f)
+        vi_f = vi_f + vi_f_grad
+        vi_f = self.sobelConv(vi_f)
 
         out = torch.cat([vi_f , ir_f], dim=1)
+
 
         out = self.decoder0(out)
         out = self.decoder1(out)
@@ -311,7 +326,21 @@ class LseRepNet(nn.Module):
         out = self.decoder3(out)
         return out
 
-
+class Sobelxy(nn.Module):
+    def __init__(self,channels, kernel_size=3, padding=1, stride=1, dilation=1, groups=1):
+        super(Sobelxy, self).__init__()
+        sobel_filter = np.array([[1, 0, -1],
+                                 [2, 0, -2],
+                                 [1, 0, -1]])
+        self.convx=nn.Conv2d(channels, channels, kernel_size=kernel_size, padding=padding, stride=stride, dilation=dilation, groups=channels,bias=False)
+        self.convx.weight.data.copy_(torch.from_numpy(sobel_filter))
+        self.convy=nn.Conv2d(channels, channels, kernel_size=kernel_size, padding=padding, stride=stride, dilation=dilation, groups=channels,bias=False)
+        self.convy.weight.data.copy_(torch.from_numpy(sobel_filter.T))
+    def forward(self, x):
+        sobelx = self.convx(x)
+        sobely = self.convy(x)
+        x=torch.abs(sobelx) + torch.abs(sobely)
+        return x
 class ConvBnLeakyRelu2d(nn.Module):
     # convolution
     # batch normalization
