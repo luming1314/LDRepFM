@@ -150,10 +150,10 @@ class Train:
         l_vi = b1 * self.ssim(fus , vi ) + b2 * self.l1(fus , vi  )
         # l_ir = b1 * self.ssim(fus * mask, torch.max(ir, vi) * mask) + b2 * self.l1(fus * mask, torch.max(ir, vi) * mask)
         l_ir = b1 * self.ssim(fus * mask, ir * mask) + b2 * self.l1(fus * mask, ir * mask)
-        # l_bright = b1 * self.ssim(fus * people_mask, ir * people_mask) + b2 * self.l1(fus * people_mask, ir * people_mask)
+        l_bright = b1 * self.ssim(fus * people_mask, ir * people_mask) + b2 * self.l1(fus * people_mask, ir * people_mask)
         l_grad = b1 * self.ssim(self.gradient(fus), grad_max) + b2 * self.l1(self.gradient(fus), grad_max)
-        # l_f = l_vi.mean() + l_ir.mean() + l_grad.mean() + l_bright.mean()
-        l_f = l_vi.mean() + l_ir.mean() + l_grad.mean()
+        l_f = l_vi.mean() + l_ir.mean() + l_grad.mean() + l_bright.mean()
+        # l_f = l_vi.mean() + l_ir.mean() + l_grad.mean()
         loss = l_f
         # backward
         self.opt_lseRepFusNet.zero_grad()
@@ -227,9 +227,9 @@ class Train:
         l_vi = b1 * self.ssim(fus , vi ) + b2 * self.l1(fus , vi )
         # l_ir = b1 * self.ssim(fus * mask, torch.max(ir, vi) * mask) + b2 * self.l1(fus * mask, torch.max(ir, vi) * mask)
         l_ir = b1 * self.ssim(fus * mask, ir * mask) + b2 * self.l1(fus * mask, ir * mask)
-        # l_bright = b1 * self.ssim(fus * people_mask, ir * people_mask) + b2 * self.l1(fus * people_mask, ir * people_mask)
+        l_bright = b1 * self.ssim(fus * people_mask, ir * people_mask) + b2 * self.l1(fus * people_mask, ir * people_mask)
         l_grad = b1 * self.ssim(self.gradient(fus), grad_max) + b2 * self.l1(self.gradient(fus), grad_max)
-        l_f = l_vi.mean() + l_ir.mean() + l_grad.mean()
+        l_f = l_vi.mean() + l_ir.mean() + l_grad.mean() + l_bright.mean()
         # l_f = l_vi.mean() + l_ir.mean() + l_grad.mean()
         loss = l_f
         # loss state
