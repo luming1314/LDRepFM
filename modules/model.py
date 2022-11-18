@@ -168,9 +168,9 @@ class LseRepFusNet(nn.Module):
         self.encoder1 = self._make_stage(int(64 * width_multiplier[0]), num_blocks[0], stride=1)
         self.encoder2 = self._make_stage(int(128 * width_multiplier[1]), num_blocks[1], stride=1)
 
-        self.encoder0_vi = copy.deepcopy(self.encoder0)
-        self.encoder1_vi = copy.deepcopy(self.encoder1)
-        self.encoder2_vi = copy.deepcopy(self.encoder2)
+        # self.encoder0_vi = copy.deepcopy(self.encoder0)
+        # self.encoder1_vi = copy.deepcopy(self.encoder1)
+        # self.encoder2_vi = copy.deepcopy(self.encoder2)
 
         self.decoder0 = ConvBnLeakyRelu2d(192, 96)
         self.decoder1 = ConvBnLeakyRelu2d(96, 48)
@@ -199,7 +199,7 @@ class LseRepFusNet(nn.Module):
     def attention_P(self, features):
         return
 
-    def forward(self, ir, vi):
+    def forward_bak(self, ir, vi):
         out = self.encoder0(ir)
         out = self.encoder1(out)
         ir_f = self.encoder2(out)
@@ -226,6 +226,35 @@ class LseRepFusNet(nn.Module):
         fus = self.decoder3(out)
 
         return fus
+
+    def forward(self, ir, vi):
+        out = self.encoder0(ir)
+        out = self.encoder1(out)
+        ir_f = self.encoder2(out)
+        # ir_f_p = ir_f * self.PA(ir_f)
+        # ir_f = torch.cat([ir_f, ir_f_p], dim=1)
+        # ir_f = self.con(ir_f)
+        ir_f_grad = self.sobel(ir_f)
+        ir_f = ir_f + ir_f_grad
+        ir_f = self.sobelConv(ir_f)
+
+        out = self.encoder0(vi)
+        out = self.encoder1(out)
+        vi_f = self.encoder2(out)
+        vi_f_grad = self.sobel(vi_f)
+        vi_f = vi_f + vi_f_grad
+        vi_f = self.sobelConv(vi_f)
+
+        out = torch.cat([vi_f , ir_f], dim=1)
+
+
+        out = self.decoder0(out)
+        out = self.decoder1(out)
+        out = self.decoder2(out)
+        fus = self.decoder3(out)
+
+        return fus
+
 
 class Position_Attention(nn.Module):
     def __init__(self, deploy, use_se):
