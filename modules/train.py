@@ -1,3 +1,4 @@
+import copy
 import logging
 from argparse import Namespace
 
@@ -152,8 +153,13 @@ class Train:
         l_ir = b1 * self.ssim(fus * mask, ir * mask) + b2 * self.l1(fus * mask, ir * mask)
         l_bright = b1 * self.ssim(fus * people_mask, ir * people_mask) + b2 * self.l1(fus * people_mask, ir * people_mask)
         l_grad = b1 * self.ssim(self.gradient(fus), grad_max) + b2 * self.l1(self.gradient(fus), grad_max)
+        # light_model = self.repvgg_model_convert(self.lseRepFusNet)
+        # fus_light = light_model(ir,vi)
+        # l_gap = b1 * self.ssim(fus, fus_light) + b2 * self.l1(fus, fus_light)
+
         l_f = l_vi.mean() + l_ir.mean() + l_grad.mean() + l_bright.mean()
         # l_f = l_vi.mean() + l_ir.mean() + l_grad.mean()
+
         loss = l_f
         # backward
         self.opt_lseRepFusNet.zero_grad()
@@ -177,8 +183,8 @@ class Train:
             loss = self.val_fusion(ir, vi, people_mask, m3fd_mask)
             loss_total += loss['loss']
             loss_mask += loss['l_mask']
-        loss_avg = loss_total / len(self.train_loader)
-        loss_mask_avg = loss_mask / len(self.train_loader)
+        loss_avg = loss_total / len(self.val_loader)
+        loss_mask_avg = loss_mask / len(self.val_loader)
         self.logging.info(f'val----------fuse: {loss_avg:03f}-----{loss_mask_avg:03f}')
         self.writer.add_scalar('Val/loss_avg', loss_avg, epoch)
         self.writer.add_scalar('Val/loss_mask_avg', loss_mask_avg, epoch)
@@ -229,8 +235,14 @@ class Train:
         l_ir = b1 * self.ssim(fus * mask, ir * mask) + b2 * self.l1(fus * mask, ir * mask)
         l_bright = b1 * self.ssim(fus * people_mask, ir * people_mask) + b2 * self.l1(fus * people_mask, ir * people_mask)
         l_grad = b1 * self.ssim(self.gradient(fus), grad_max) + b2 * self.l1(self.gradient(fus), grad_max)
+
+        # light_model = self.repvgg_model_convert(self.lseRepFusNet)
+        # fus_light = light_model(ir,vi)
+        # l_gap = b1 * self.ssim(fus, fus_light) + b2 * self.l1(fus, fus_light)
+
         l_f = l_vi.mean() + l_ir.mean() + l_grad.mean() + l_bright.mean()
         # l_f = l_vi.mean() + l_ir.mean() + l_grad.mean()
+
         loss = l_f
         # loss state
         state = {
@@ -262,6 +274,16 @@ class Train:
         b, c, h, w = img.size()
         noise = torch.randn([b, c, h, w]).to(img.device) * std + mean
         return noise
+
+    def repvgg_model_convert(self, model:torch.nn.Module, save_path=None, do_copy=True):
+        if do_copy:
+            model = copy.deepcopy(model)
+        for module in model.modules():
+            if hasattr(module, 'switch_to_deploy'):
+                module.switch_to_deploy()
+        if save_path is not None:
+            torch.save(model.state_dict(), save_path)
+        return model
 
 
 

@@ -172,13 +172,17 @@ class LseRepFusNet(nn.Module):
         # self.encoder1_vi = copy.deepcopy(self.encoder1)
         # self.encoder2_vi = copy.deepcopy(self.encoder2)
 
-        self.decoder0 = ConvBnLeakyRelu2d(192, 96)
+        # self.decoder0 = ConvBnLeakyRelu2d(192, 96)
+        self.decoder0 = ConvBnLeakyBNRelu2d(192, 96)
         self.decoder1 = ConvBnLeakyRelu2d(96, 48)
         self.decoder2 = ConvBnLeakyRelu2d(48, 24)
+        # self.decoder2 = ConvBnLeakyBNRelu2d(48, 24)
         self.decoder3 = ConvBnTanh2d(24, 1)
 
         self.PA = Position_Attention(self.deploy, self.use_se)
         self.con = ConvBnLeakyRelu2d(192, 96)
+        self.con2 = ConvBnLeakyRelu2d(1, 48)
+        self.con3 = ConvBnLeakyRelu2d(48, 96)
 
         self.sobel = Sobelxy(96)
         self.sobelConv = ConvBnLeakyRelu2d(96, 96)
@@ -228,27 +232,33 @@ class LseRepFusNet(nn.Module):
         return fus
 
     def forward(self, ir, vi):
+        max = torch.max(ir,vi)
+        max = self.con2(max)
+        max = self.con3(max)
+
         out = self.encoder0(ir)
         out = self.encoder1(out)
         ir_f = self.encoder2(out)
-        # ir_f_p = ir_f * self.PA(ir_f)
-        # ir_f = torch.cat([ir_f, ir_f_p], dim=1)
-        # ir_f = self.con(ir_f)
-        ir_f_grad = self.sobel(ir_f)
-        ir_f = ir_f + ir_f_grad
-        ir_f = self.sobelConv(ir_f)
+        ir_f_p = ir_f * self.PA(ir_f)
+        ir_f = torch.cat([ir_f, ir_f_p], dim=1)
+        ir_f = self.con(ir_f)
+        # ir_f_grad = self.sobel(ir_f)
+        # ir_f = ir_f + ir_f_grad
+        # ir_f = self.sobelConv(ir_f)
 
         out = self.encoder0(vi)
         out = self.encoder1(out)
         vi_f = self.encoder2(out)
-        vi_f_grad = self.sobel(vi_f)
-        vi_f = vi_f + vi_f_grad
-        vi_f = self.sobelConv(vi_f)
+        # vi_f_grad = self.sobel(vi_f)
+        # vi_f = vi_f + vi_f_grad
+        # vi_f = self.sobelConv(vi_f)
 
+        # out = torch.cat([vi_f+vi_res , ir_f+ir_res], dim=1)
         out = torch.cat([vi_f , ir_f], dim=1)
 
 
         out = self.decoder0(out)
+        out = out + max
         out = self.decoder1(out)
         out = self.decoder2(out)
         fus = self.decoder3(out)
@@ -381,6 +391,21 @@ class ConvBnLeakyRelu2d(nn.Module):
 
     def forward(self, x):
         return F.leaky_relu(self.conv(x), negative_slope=0.2)
+        # return F.leaky_relu(self.bn(self.conv(x)), negative_slope=0.2)
+
+class ConvBnLeakyBNRelu2d(nn.Module):
+    # convolution
+    # batch normalization
+    # leaky relu
+    def __init__(self, in_channels, out_channels, kernel_size=3, padding=1, stride=1, dilation=1, groups=1):
+        super(ConvBnLeakyBNRelu2d, self).__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, stride=stride, dilation=dilation, groups=groups)
+        self.bn  = nn.BatchNorm2d(out_channels)
+        self.nonlinearity = nn.ReLU()
+
+    def forward(self, x):
+        # return F.leaky_relu(self.conv(x), negative_slope=0.2)
+        return self.nonlinearity(self.bn(self.conv(x)))
 
 
 class ConvBnTanh2d(nn.Module):
@@ -391,6 +416,7 @@ class ConvBnTanh2d(nn.Module):
 
     def forward(self,x):
         return torch.tanh(self.conv(x))/2+0.5
+        # return torch.tanh(self.bn(self.conv(x)))/2+0.5
 if __name__ == '__main__':
     ir = torch.rand([8,1,224,224])
     vi = torch.rand([8,1,224,224])

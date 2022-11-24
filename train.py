@@ -28,7 +28,7 @@ def parse_args() -> Namespace:
     parser.add_argument('--adv_weight', nargs='+', type=float, default=[1, 1], help='discriminator balance')
 
     # checkpoint opt
-    parser.add_argument('--epochs', type=int, default=100, help='epoch to train')
+    parser.add_argument('--epochs', type=int, default=300, help='epoch to train')
     # optimizer opt
     parser.add_argument('--learning_rate', type=float, default=1e-4, help='learning rate')
     # dataloader opt
@@ -48,7 +48,7 @@ def parse_args() -> Namespace:
                         help='Path of the tensorboard summmary')
 
     # gpus
-    parser.add_argument('--gpus', type=lambda s: [int(item.strip()) for item in s.split(',')], default='4',
+    parser.add_argument('--gpus', type=lambda s: [int(item.strip()) for item in s.split(',')], default='0,2',
                         help='comma delimited of gpu ids to use. Use "-1" for cpu usage')
 
     return parser.parse_args()

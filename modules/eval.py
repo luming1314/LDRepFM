@@ -44,6 +44,8 @@ class Eval:
 
 
             pair.save_fus(dst / ir_path.name, fus, color)
+            # pair.save_fus_reid(dst / ir_path.name, fus, color)
+
             # pair.save_lab(dst / ir_path.name, fus, color)
 
     @torch.no_grad()
