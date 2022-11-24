@@ -16,9 +16,8 @@ def parse_opt() -> Namespace:
     parser.add_argument('--src', type=str, help='fusion data root path  DataSets include:[TNO/RoadScene/MSRS/M3FD]', default='data/test/TNO/' )
     parser.add_argument('--dst', type=str, help='fusion images save path run save include:[TNO/RoadScene/MSRS/M3FD]', default='runs/test/TNO/')
 
-    parser.add_argument('--weights', type=str, default='cache/a1/174.pth', help='pretrained weights path')
-    parser.add_argument('--deploy_weight', type=str, default='cache/a2/174.pth', help='pretrained weights path')
-    parser.add_argument('--final_weight', type=str, default='cache/a3/165.pth', help='pretrained weights path')
+    parser.add_argument('--weights', type=str, default='cache/a3/090.pth', help='pretrained weights path')
+    parser.add_argument('--deploy_weight', type=str, default='cache/a4/090.pth', help='pretrained weights path')
     parser.add_argument('--color', action='store_true', help='colorize fused images with visible color channels', default=True)
 
     # fusion opt
@@ -50,26 +49,21 @@ if __name__ == '__main__':
 
     # init model
     lseRepFusNet = LseRepFusNet(num_blocks=[2, 4, 14, 1], width_multiplier=[0.75, 0.75, 0.75, 2.5], override_groups_map=None, deploy=False)
-    lseRepNet = LseRepNet(num_blocks=[2, 4, 14, 1], width_multiplier=[0.75, 0.75, 0.75, 2.5], override_groups_map=None, deploy=False)
     # load pretrained weights
     ck_pt = torch.load(config.weights, map_location=device)
-    torch.save(ck_pt['lseRepFusNet'], config.final_weight)
     # Multi card parallelism, removing the module in the weight
 
     if config.card == 'multi':
-        for i, j in ck_pt.items():
-            state_dict = OrderedDict()
-            for k, v in j.items():
-                name = k[7:]  # remove `module.`
-                state_dict[name] = v
-            ck_pt[i] = state_dict
+        state_dict = OrderedDict()
+        for k, v in ck_pt.items():
+            name = k[7:]  # remove `module.`
+            state_dict[name] = v
+        ck_pt = state_dict
 
-    lseRepFusNet.load_state_dict(ck_pt['lseRepFusNet'])
-    lseRepNet.load_state_dict(ck_pt['lseRepNet'])
+    lseRepFusNet.load_state_dict(ck_pt)
     save_path = config.dst
     if config.mode == 'deploy':
         lseRepFusNet = repvgg_model_convert(lseRepFusNet, save_path=config.deploy_weight)
-        lseRepNet = repvgg_model_convert(lseRepNet, save_path=config.deploy_weight)
         save_path = config.dst + '/' + 'deploy'
 
     # images

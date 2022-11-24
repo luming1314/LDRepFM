@@ -179,13 +179,13 @@ class LseRepFusNet(nn.Module):
         # self.decoder2 = ConvBnLeakyBNRelu2d(48, 24)
         self.decoder3 = ConvBnTanh2d(24, 1)
 
-        self.PA = Position_Attention(self.deploy, self.use_se)
-        self.con = ConvBnLeakyRelu2d(192, 96)
+        # self.PA = Position_Attention(self.deploy, self.use_se)
+        # self.con = ConvBnLeakyRelu2d(192, 96)
         self.con2 = ConvBnLeakyRelu2d(1, 48)
         self.con3 = ConvBnLeakyRelu2d(48, 96)
 
-        self.sobel = Sobelxy(96)
-        self.sobelConv = ConvBnLeakyRelu2d(96, 96)
+        # self.sobel = Sobelxy(96)
+        # self.sobelConv = ConvBnLeakyRelu2d(96, 96)
 
 
     def _make_stage(self, planes, num_blocks, stride):
@@ -239,9 +239,9 @@ class LseRepFusNet(nn.Module):
         out = self.encoder0(ir)
         out = self.encoder1(out)
         ir_f = self.encoder2(out)
-        ir_f_p = ir_f * self.PA(ir_f)
-        ir_f = torch.cat([ir_f, ir_f_p], dim=1)
-        ir_f = self.con(ir_f)
+        # ir_f_p = ir_f * self.PA(ir_f)
+        # ir_f = torch.cat([ir_f, ir_f_p], dim=1)
+        # ir_f = self.con(ir_f)
         # ir_f_grad = self.sobel(ir_f)
         # ir_f = ir_f + ir_f_grad
         # ir_f = self.sobelConv(ir_f)

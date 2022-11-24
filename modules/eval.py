@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 from typing import List
 
@@ -11,6 +12,7 @@ from torchvision.transforms import transforms
 from tqdm import tqdm
 
 from modules.image_pair import ImagePair
+from thop import profile
 
 
 class Eval:
@@ -26,6 +28,8 @@ class Eval:
 
     @torch.no_grad()
     def __call__(self, ir_paths: List[Path], vi_paths: List[Path], dst: Path, color: bool = False):
+        img_len= len(ir_paths)
+        time_used_avg, flops_avg, params_avg = 0., 0., 0.
         p_bar = tqdm(enumerate(zip(ir_paths, vi_paths)), total=len(ir_paths))
         for idx, (ir_path, vi_path) in p_bar:
             # assert ir_path.stem == vi_path.stem
@@ -34,18 +38,21 @@ class Eval:
             ir, vi = pair.ir_t, pair.vi_t
             ir, vi = [ir.half(), vi.half()] if self.half else [ir, vi]
             ir, vi = ir.to(self.device), vi.to(self.device)
+            start = time.time()
             fus = self.net(ir.unsqueeze(0), vi.unsqueeze(0))[0].clip(0., 1.)
-            b,c,h,w = ir.unsqueeze(0).size()
-
-            # fus = self.net(ir.unsqueeze(0))[0].clip(0., 1.)
-            # fus = torch.where(fus > fus.mean(), 1., 0.)[0]
-
-
-
-
+            time_used = time.time() - start
+            # flops, params = profile(self.net, (ir.unsqueeze(0), vi.unsqueeze(0)))
+            if idx != 0:
+                time_used_avg += (time_used / (img_len - 1))
+            # flops_avg += flops / img_len
+            # params_avg += params / img_len
+            # print('FLOPs = ' + str(flops / 1000 ** 3) + 'G')
+            # print('Params = ' + str(params / 1000 ** 2) + 'M')
             pair.save_fus(dst / ir_path.name, fus, color)
             # pair.save_fus_reid(dst / ir_path.name, fus, color)
-
+        # print('FLOPs = ' + str(flops_avg / 1000 ** 3) + 'G')
+        # print('Params = ' + str(params_avg / 1000 ** 2) + 'M')
+        print('Time = ' + str(time_used_avg) + 'S')
             # pair.save_lab(dst / ir_path.name, fus, color)
 
     @torch.no_grad()
