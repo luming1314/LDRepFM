@@ -163,27 +163,44 @@ class LseRepFusNet(nn.Module):
 
         self.in_planes = min(64, int(64 * width_multiplier[0]))
 
-        self.encoder0 = RepVGGBlock(in_channels=1, out_channels=self.in_planes, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se)
+        self.encoder0 = RepVGGBlock(in_channels=1, out_channels=32, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se)
+        self.encoder1 = RepVGGBlock(in_channels=32, out_channels=32, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se)
+        self.encoder2 = RepVGGBlock(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se)
+
+
+        self.suppleConv0 = ConvBnLeakyRelu2d(1, 64)
+        # self.suppleConv1 = ConvRelu2d(48, 96)
+        self.decoder0 = ConvBNRelu2d(128, 64)
+        self.decoder1 = ConvBnLeakyRelu2d(64, 32)
+        self.decoder2 = ConvBnTanh2d(32, 1)
+
+        # self.suppleConv0 = ConvBnLeakyRelu2d(1, 48)
+        # self.suppleConv1 = ConvBnLeakyRelu2d(48, 96)
+        # self.decoder0 = ConvBNRelu2d(192, 96)
+        # self.decoder1 = ConvBnLeakyRelu2d(96, 48)
+        # self.decoder2 = ConvBnTanh2d(48, 1)
+
+        # self.encoder0 = RepVGGBlock(in_channels=1, out_channels=self.in_planes, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se)
         self.cur_layer_idx = 1
-        self.encoder1 = self._make_stage(int(64 * width_multiplier[0]), num_blocks[0], stride=1)
-        self.encoder2 = self._make_stage(int(128 * width_multiplier[1]), num_blocks[1], stride=1)
+        # self.encoder1 = self._make_stage(int(64 * width_multiplier[0]), num_blocks[0], stride=1)
+        # self.encoder2 = self._make_stage(int(128 * width_multiplier[1]), num_blocks[1], stride=1)
 
         # self.encoder0_vi = copy.deepcopy(self.encoder0)
         # self.encoder1_vi = copy.deepcopy(self.encoder1)
         # self.encoder2_vi = copy.deepcopy(self.encoder2)
 
         # self.decoder0 = ConvBnLeakyRelu2d(192, 96)
-        self.decoder0 = ConvBnLeakyBNRelu2d(192, 96)
-        self.decoder1 = ConvBnLeakyRelu2d(96, 48)
-        self.decoder2 = ConvBnLeakyRelu2d(48, 24)
+        # self.decoder0 = ConvBnLeakyBNRelu2d(192, 96)
+        # self.decoder1 = ConvBnLeakyRelu2d(96, 48)
+        # self.decoder2 = ConvBnLeakyRelu2d(48, 24)
         # self.decoder2 = ConvBnLeakyBNRelu2d(48, 24)
-        self.decoder3 = ConvBnTanh2d(24, 1)
+        # self.decoder3 = ConvBnTanh2d(48, 1)
 
         # self.PA = Position_Attention(self.deploy, self.use_se)
         # self.con = ConvBnLeakyRelu2d(192, 96)
-        self.con2 = ConvBnLeakyRelu2d(1, 48)
-        self.con3 = ConvBnLeakyRelu2d(48, 96)
-
+        # self.con2 = ConvBnLeakyRelu2d(1, 48)
+        # self.con3 = ConvBnLeakyRelu2d(48, 96)
+        #
         # self.sobel = Sobelxy(96)
         # self.sobelConv = ConvBnLeakyRelu2d(96, 96)
 
@@ -233,12 +250,14 @@ class LseRepFusNet(nn.Module):
 
     def forward(self, ir, vi):
         max = torch.max(ir,vi)
-        max = self.con2(max)
-        max = self.con3(max)
+        max = self.suppleConv0(max)
+        # max = self.suppleConv1(max)
 
+        #
         out = self.encoder0(ir)
         out = self.encoder1(out)
         ir_f = self.encoder2(out)
+
         # ir_f_p = ir_f * self.PA(ir_f)
         # ir_f = torch.cat([ir_f, ir_f_p], dim=1)
         # ir_f = self.con(ir_f)
@@ -249,6 +268,7 @@ class LseRepFusNet(nn.Module):
         out = self.encoder0(vi)
         out = self.encoder1(out)
         vi_f = self.encoder2(out)
+
         # vi_f_grad = self.sobel(vi_f)
         # vi_f = vi_f + vi_f_grad
         # vi_f = self.sobelConv(vi_f)
@@ -259,9 +279,10 @@ class LseRepFusNet(nn.Module):
 
         out = self.decoder0(out)
         out = out + max
+
+        # out = self.decoder1(out)
         out = self.decoder1(out)
-        out = self.decoder2(out)
-        fus = self.decoder3(out)
+        fus = self.decoder2(out)
 
         return fus
 
@@ -380,6 +401,32 @@ class Sobelxy(nn.Module):
         sobely = self.convy(x)
         x=torch.abs(sobelx) + torch.abs(sobely)
         return x
+class ConvRelu2d(nn.Module):
+    # convolution
+    # batch normalization
+    # leaky relu
+    def __init__(self, in_channels, out_channels, kernel_size=3, padding=1, stride=1, dilation=1, groups=1):
+        super(ConvRelu2d, self).__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, stride=stride, dilation=dilation, groups=groups)
+        # self.bn  = nn.BatchNorm2d(out_channels)
+        self.nonlinearity = nn.ReLU()
+
+    def forward(self, x):
+        return self.nonlinearity(self.conv(x))
+
+class ConvBNRelu2d(nn.Module):
+    # convolution
+    # batch normalization
+    # leaky relu
+    def __init__(self, in_channels, out_channels, kernel_size=3, padding=1, stride=1, dilation=1, groups=1):
+        super(ConvBNRelu2d, self).__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, stride=stride, dilation=dilation, groups=groups)
+        self.bn  = nn.BatchNorm2d(out_channels)
+        self.nonlinearity = nn.ReLU()
+
+    def forward(self, x):
+        return self.nonlinearity(self.bn(self.conv(x)))
+
 class ConvBnLeakyRelu2d(nn.Module):
     # convolution
     # batch normalization

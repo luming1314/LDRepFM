@@ -41,11 +41,11 @@ class Eval:
             start = time.time()
             fus = self.net(ir.unsqueeze(0), vi.unsqueeze(0))[0].clip(0., 1.)
             time_used = time.time() - start
-            # flops, params = profile(self.net, (ir.unsqueeze(0), vi.unsqueeze(0)))
             if idx != 0:
                 time_used_avg += (time_used / (img_len - 1))
             # flops_avg += flops / img_len
             # params_avg += params / img_len
+            # flops, params = profile(self.net, (ir.unsqueeze(0), vi.unsqueeze(0)))
             # print('FLOPs = ' + str(flops / 1000 ** 3) + 'G')
             # print('Params = ' + str(params / 1000 ** 2) + 'M')
             pair.save_fus(dst / ir_path.name, fus, color)
