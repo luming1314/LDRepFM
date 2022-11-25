@@ -161,11 +161,16 @@ class LseRepFusNet(nn.Module):
 
         assert 0 not in self.override_groups_map
 
-        self.in_planes = min(64, int(64 * width_multiplier[0]))
+        # self.in_planes = min(64, int(64 * width_multiplier[0]))
+        self.in_planes = 32
 
         self.encoder0 = RepVGGBlock(in_channels=1, out_channels=32, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se)
+        # self.encoder1 = RepVGGBlock(in_channels=32, out_channels=32, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se)
+        # self.encoder2 = RepVGGBlock(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se)
+        self.cur_layer_idx = 1
         self.encoder1 = RepVGGBlock(in_channels=32, out_channels=32, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se)
-        self.encoder2 = RepVGGBlock(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se)
+        self.encoder2 = self._make_our_stage()
+
 
 
         self.suppleConv0 = ConvBnLeakyRelu2d(1, 64)
@@ -181,7 +186,7 @@ class LseRepFusNet(nn.Module):
         # self.decoder2 = ConvBnTanh2d(48, 1)
 
         # self.encoder0 = RepVGGBlock(in_channels=1, out_channels=self.in_planes, kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se)
-        self.cur_layer_idx = 1
+        # self.cur_layer_idx = 1
         # self.encoder1 = self._make_stage(int(64 * width_multiplier[0]), num_blocks[0], stride=1)
         # self.encoder2 = self._make_stage(int(128 * width_multiplier[1]), num_blocks[1], stride=1)
 
@@ -214,6 +219,14 @@ class LseRepFusNet(nn.Module):
                                       stride=stride, padding=1, groups=cur_groups, deploy=self.deploy, use_se=self.use_se))
             self.in_planes = planes
             self.cur_layer_idx += 1
+        return nn.Sequential(*blocks)
+
+    def _make_our_stage(self):
+        blocks = []
+        blocks.append(RepVGGBlock(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1, deploy=self.deploy,use_se=self.use_se))
+        for stride in range(2):
+            blocks.append(RepVGGBlock(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1,
+                                    deploy=self.deploy, use_se=self.use_se))
         return nn.Sequential(*blocks)
 
 

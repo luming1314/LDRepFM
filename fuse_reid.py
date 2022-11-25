@@ -17,8 +17,8 @@ def parse_opt() -> Namespace:
     parser.add_argument('--src', type=str, help='fusion data root path  DataSets include:[TNO/RoadScene/MSRS/M3FD]', default='data/test/RegDB' )
     parser.add_argument('--dst', type=str, help='fusion images save path run save include:[TNO/RoadScene/MSRS/M3FD]', default='runs/test/RegDB')
 
-    parser.add_argument('--weights', type=str, default='cache/a1/300.pth', help='pretrained weights path')
-    parser.add_argument('--deploy_weight', type=str, default='cache/a2/300.pth', help='pretrained weights path')
+    parser.add_argument('--weights', type=str, default='cache/a1/187.pth', help='pretrained weights path')
+    parser.add_argument('--deploy_weight', type=str, default='cache/a2/187.pth', help='pretrained weights path')
     parser.add_argument('--color', action='store_true', help='colorize fused images with visible color channels', default=True)
 
     # fusion opt
@@ -31,7 +31,7 @@ def parse_opt() -> Namespace:
     parser.add_argument('--gpus', type=lambda s: [int(item.strip()) for item in s.split(',')], default='1',
                         help='comma delimited of gpu ids to use. Use "-1" for cpu usage')
     # deploy
-    parser.add_argument('--mode', metavar='MODE', default='deploy', choices=['train', 'deploy'], help='train or deploy')
+    parser.add_argument('--mode', metavar='MODE', default='train', choices=['train', 'deploy'], help='train or deploy')
     parser.add_argument('--card', metavar='MODE', default='multi', choices=['multi', 'single'],
                         help='train is multi or single')
 
