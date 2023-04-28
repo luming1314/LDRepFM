@@ -5,10 +5,13 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import torch
 from PIL import Image
-xml_file=r'./test/Annotations'
 
-l=['People', 'Bus', 'Car', 'Motorcycle', 'Lamp', 'Truck']
-classes_id = {'People':'0', 'Bus':'5', 'Car':'2', 'Motorcycle':'3', 'Lamp':'9', 'Truck':'7'}
+ONLY_PEOPLE = True
+root_path = r'./data/train/M3FD'
+xml_name = 'Annotations'
+xml_file = os.path.join(root_path, xml_name)
+l = ['People', 'Bus', 'Car', 'Motorcycle', 'Lamp', 'Truck']
+classes_id = {'People': '0', 'Bus': '5', 'Car': '2', 'Motorcycle': '3', 'Lamp': '9', 'Truck': '7'}
 
 
 def convert(box,dw,dh):
@@ -25,7 +28,9 @@ def convert(box,dw,dh):
     return x,y,w,h
 
 def f(name_id):
-    xml_o=open(r'./test/Annotations\%s.xml'%name_id)
+    path = os.path.join(xml_file, '%s.xml' % name_id)
+    xml_o = open(path)
+    # xml_o=open(r'./test/Annotations\%s.xml'%name_id)
     # txt_o=open(r'./test/labels\%s.txt'%name_id,'w')
 
     pares=ET.parse(xml_o)
@@ -38,9 +43,9 @@ def f(name_id):
     mask = torch.rand(dh, dw)
     mask = torch.zeros_like(mask)
     for obj in objects :
-        c=l.index(obj.find('name').text)
-        # if c != 0:
-        #     continue
+        c = l.index(obj.find('name').text)
+        if ONLY_PEOPLE and c != 0:
+            continue
         # c=classes_id[obj.find('name').text]
         bnd=obj.find('bndbox')
 
@@ -58,12 +63,12 @@ def f(name_id):
         # write_t="{} {:.5f} {:.5f} {:.5f} {:.5f}\n".format(c,x,y,w,h)
         # txt_o.write(write_t)
     image = Image.fromarray(np.uint8(mask))
-    path = './test/labels/' + name_id +'.png'
+    path = os.path.join(root_path, 'la' if ONLY_PEOPLE else 'lb', name_id + '.png')
     image.save(path)
     xml_o.close()
     # txt_o.close()
 
-name=glob.glob(os.path.join(xml_file,"*.xml"))
+name = glob.glob(os.path.join(xml_file,"*.xml"))
 for i in name :
-    name_id=os.path.basename(i)[:-4]
+    name_id = os.path.basename(i)[:-4]
     f(name_id)

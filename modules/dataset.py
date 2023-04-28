@@ -11,10 +11,10 @@ import numpy as np
 class DataSets(Data.Dataset):
     def __init__(self, root, transform=None, gray=True, partition='train'):
 
-        self.files_VIS = glob(os.path.join(root, "M3FD", "VIS", '*.*'))
-        self.files_IR = glob(os.path.join(root, "M3FD", "IR", '*.*'))
-        self.files_Lab = glob(os.path.join(root, "M3FD", "Lab", '*.*'))
-        self.files_ALab = glob(os.path.join(root, "M3FD", "ALab", '*.*'))
+        self.files_VIS = glob(os.path.join(root, "M3FD", "vi", '*.*'))
+        self.files_IR = glob(os.path.join(root, "M3FD", "ir", '*.*'))
+        self.files_Lab = glob(os.path.join(root, "M3FD", "la", '*.*'))  # people_mask
+        self.files_ALab = glob(os.path.join(root, "M3FD", "lb", '*.*'))  # m3fd_mask
 
         self.gray = gray
         self._tensor = transforms.ToTensor()
