@@ -5,8 +5,11 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import torch
 from PIL import Image
-
-ONLY_PEOPLE = True
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('--mode', metavar='MODE', default='pm', choices=['pm', 'mm'], help='pm is only people mask; mm is all m3fd mask')
+config = parser.parse_args()
+ONLY_PEOPLE = True if config.mode == 'pm' else False
 root_path = r'./data/train/M3FD'
 xml_name = 'Annotations'
 xml_file = os.path.join(root_path, xml_name)
