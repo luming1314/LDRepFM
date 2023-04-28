@@ -25,14 +25,13 @@ class Eval:
         _ = net.eval() if eval else None
         self.net = net
         self.spatial = SpatialGradient('diff')
-
     @torch.no_grad()
     def __call__(self, ir_paths: List[Path], vi_paths: List[Path], dst: Path, color: bool = False):
         img_len= len(ir_paths)
         time_used_avg, flops_avg, params_avg = 0., 0., 0.
         p_bar = tqdm(enumerate(zip(ir_paths, vi_paths)), total=len(ir_paths))
         for idx, (ir_path, vi_path) in p_bar:
-            # assert ir_path.stem == vi_path.stem
+            assert ir_path.stem == vi_path.stem
             p_bar.set_description(f'fusing {ir_path.stem} | device: {str(self.device)}')
             pair = ImagePair(ir_path, vi_path)
             ir, vi = pair.ir_t, pair.vi_t
@@ -43,17 +42,14 @@ class Eval:
             time_used = time.time() - start
             if idx != 0:
                 time_used_avg += (time_used / (img_len - 1))
-            # flops_avg += flops / img_len
-            # params_avg += params / img_len
-            # flops, params = profile(self.net, (ir.unsqueeze(0), vi.unsqueeze(0)))
-            # print('FLOPs = ' + str(flops / 1000 ** 3) + 'G')
-            # print('Params = ' + str(params / 1000 ** 2) + 'M')
+                flops, params = profile(self.net, (ir.unsqueeze(0), vi.unsqueeze(0)))
+                flops_avg += flops / (img_len - 1)
+                params_avg += params / (img_len - 1)
             pair.save_fus(dst / ir_path.name, fus, color)
-            # pair.save_fus_reid(dst / ir_path.name, fus, color)
-        # print('FLOPs = ' + str(flops_avg / 1000 ** 3) + 'G')
-        # print('Params = ' + str(params_avg / 1000 ** 2) + 'M')
+
+        print('FLOPs = ' + str(flops_avg / 1000 ** 3) + 'G')
+        print('Params = ' + str(params_avg / 1000 ** 2) + 'M')
         print('Time = ' + str(time_used_avg) + 'S')
-            # pair.save_lab(dst / ir_path.name, fus, color)
 
     @torch.no_grad()
     def getGradMap(self, ir_paths: List[Path], vi_paths: List[Path], dst: Path, color: bool = False):
