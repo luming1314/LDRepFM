@@ -53,3 +53,5 @@ Finally, run `python train.py --gpus -1` to train LDRepFM.
 If you have any other questions about the code, please email `luming@stu.jiangnan.edu.cn`
 ## Citation
 If this work has been helpful to you, please feel free to cite our paper!
+
+*Since the paper does not have a DOI yet, we will publish it later.*
