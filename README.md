@@ -54,4 +54,14 @@ If you have any other questions about the code, please email `luming@stu.jiangna
 ## Citation
 If this work has been helpful to you, please feel free to cite our paper!
 
-*Since the paper does not have a DOI yet, we will publish it later.*
+```
+@ARTICLE{10138238,
+  author={Lu, Ming and Jiang, Min and Kong, Jun and Tao, Xuefeng},
+  journal={IEEE Transactions on Instrumentation and Measurement}, 
+  title={LDRepFM: A Real-time End-to-End Visible and Infrared Image Fusion Model Based on Layer Decomposition and Re-parameterization}, 
+  year={2023},
+  volume={},
+  number={},
+  pages={1-1},
+  doi={10.1109/TIM.2023.3280496}}
+```
