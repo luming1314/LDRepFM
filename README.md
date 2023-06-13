@@ -61,10 +61,10 @@ If this work has been helpful to you, please feel free to cite our paper!
 @ARTICLE{10138238,
   author={Lu, Ming and Jiang, Min and Kong, Jun and Tao, Xuefeng},
   journal={IEEE Transactions on Instrumentation and Measurement}, 
-  title={LDRepFM: A Real-time End-to-End Visible and Infrared Image Fusion Model Based on Layer Decomposition and Re-parameterization}, 
+  title={LDRepFM: A Real-Time End-to-End Visible and Infrared Image Fusion Model Based on Layer Decomposition and Re-Parameterization}, 
   year={2023},
-  volume={},
+  volume={72},
   number={},
-  pages={1-1},
+  pages={1-12},
   doi={10.1109/TIM.2023.3280496}}
 ```
