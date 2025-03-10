@@ -67,6 +67,7 @@ def f(name_id):
         # txt_o.write(write_t)
     image = Image.fromarray(np.uint8(mask))
     path = os.path.join(root_path, 'la' if ONLY_PEOPLE else 'lb', name_id + '.png')
+    print("save image to: {}".format(path))
     image.save(path)
     xml_o.close()
     # txt_o.close()
