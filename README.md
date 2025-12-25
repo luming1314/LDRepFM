@@ -53,7 +53,7 @@ imagesc(I);
 ```
 Finally, run `python train.py --gpus -1` to train LDRepFM.
 ## Any Question
-If you have any other questions about the code, please email `minglu@stu.jiangnan.edu.cn`
+If you have any other questions about the code, please email `minglu@stu.jiangnan.edu.cn`(wechat: luming-2077 is also welcomed).
 ## Citation
 If this work has been helpful to you, please feel free to cite our paper!
 
